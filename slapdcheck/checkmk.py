@@ -664,8 +664,8 @@ class SlapdCheck(CheckMkLocalCheck):
             state,
             'SlapdThreads',
             performance_data={
-                'threads_active=%d': threads_active,
-                'threads_pending=%d': threads_pending,
+                'threads_active': threads_active,
+                'threads_pending': threads_pending,
             },
             check_output='Thread counts active:%d pending: %d' % (
                 threads_active, threads_pending)
