@@ -1,0 +1,66 @@
+.tests:
+  script: pushd /var/tmp && popd && pip2 install -e . && LDAP0_TRACE_LEVEL=0 coverage-2.7 run setup.py test && coverage-2.7 report
+  stage: test
+  only:
+    refs:
+      - branches
+
+.LTB-RPM-REPO: &script-1 |
+  echo '
+  [ltb-project]
+  name=LTB project packages
+  baseurl=https://ltb-project.org/rpm/$releasever/$basearch
+  enabled=1
+  gpgcheck=1
+  gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project
+  ' > /etc/yum.repos.d/ltb-project.repo
+
+
+test:tumbleweed:
+  extends: .tests
+  image: opensuse/tumbleweed
+  before_script:
+  - zypper update
+  - zypper --non-interactive install --auto-agree-with-licenses --no-recommends cyrus-sasl-digestmd5 cyrus-sasl-scram cyrus-sasl-crammd5 cyrus-sasl-plain openldap2 python2-pyasn1-modules python2-setuptools python2-setuptools-git python2-setuptools_scm gcc python-devel openldap2-devel cyrus-sasl-devel python2-pip openldap2-back-sock openldap2-contrib openldap2-client
+  - 'echo "mech_list: PLAIN DIGEST-MD5 CRAM-MD5 SCRAM-SHA-1 EXTERNAL" > /etc/sasl2/slapd.conf'
+  - pip2 install coverage
+
+test:leap:
+  extends: .tests
+  image: opensuse/leap
+  before_script:
+  - zypper update
+  - zypper --non-interactive install --auto-agree-with-licenses --no-recommends cyrus-sasl-digestmd5 cyrus-sasl-scram cyrus-sasl-crammd5 cyrus-sasl-plain openldap2 python2-pyasn1-modules python2-setuptools python2-setuptools-git python2-setuptools_scm gcc python-devel openldap2-devel cyrus-sasl-devel python2-pip openldap2-back-sock openldap2-contrib openldap2-client
+  - 'echo "mech_list: PLAIN DIGEST-MD5 CRAM-MD5 SCRAM-SHA-1 EXTERNAL" > /etc/sasl2/slapd.conf'
+  - pip2 install coverage
+
+test:centos:
+  extends: .tests
+  image: centos:latest
+  before_script:
+  - yum update
+  - rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+  - yum install epel-release -y
+  - *script-1
+  - yum install -y cyrus-sasl-md5 cyrus-sasl-plain cyrus-sasl-scram openldap-ltb openldap-ltb-contrib-overlays openldap-ltb-mdb-utils openldap-ltb-ppm openldap-devel python-setuptools gcc python-devel cyrus-sasl-devel python-pip
+  - 'echo "mech_list: PLAIN DIGEST-MD5 CRAM-MD5 SCRAM-SHA-1 EXTERNAL" > /etc/sasl2/slapd.conf'
+  - pip2 install coverage
+  - export SLAPD=/usr/local/openldap/libexec/slapd
+  - export SCHEMA=/usr/local/openldap/etc/openldap/schema
+  - export BIN=/usr/local/openldap/bin
+  - export SBIN=/usr/local/openldap/sbin
+
+test:debian:
+  extends: .tests
+  image: debian:latest
+  before_script:
+  - apt-get update
+  - export DEBIAN_FRONTEND=noninteractive
+  - apt-get install --yes --quiet --no-install-recommends --option 'DPkg::Options=--force-confold' --option 'DPkg::Options=--force-confdef' slapd ldap-utils libldap2-dev libsasl2-dev python-setuptools python-setuptools-git python-setuptools-scm gcc python-dev python-pip
+  - mkdir /etc/sasl2
+  - 'echo "mech_list: PLAIN DIGEST-MD5 CRAM-MD5 SCRAM-SHA-1 EXTERNAL" > /etc/sasl2/slapd.conf'
+  - pip2 install coverage
+  - export SLAPD=/usr/sbin/slapd
+  - export SCHEMA=/etc/ldap/schema
+  - export BIN=/usr/bin
+  - export SBIN=/usr/sbin
