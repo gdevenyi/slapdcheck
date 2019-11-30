@@ -3,12 +3,12 @@
 slapdcheck.cnf - Configuration constants
 """
 
-from __future__ import absolute_import
-
 import sys
 import os
 
 import ldap0
+
+STATE_FILENAME = 'slapd_checkmk.state'
 
 # constants for the check result codes
 CHECK_RESULT_OK = 0
@@ -53,9 +53,8 @@ OPS_WAITING_CRIT = 60
 # if real connection count falls below this treshold it could mean
 # that slapd is not reachable from LDAP clients
 CONNECTIONS_WARN_LOWER = 3
-# too many connections are bad too - depends on your expected number
-# of LDAP clients with persistent connections
-CONNECTIONS_WARN_UPPER = 1000
+# warn if this percentage of max. file descriptors is reached
+CONNECTIONS_WARN_PERCENTAGE = 80.0
 
 # Tresholds for thread-count-related warnings
 # There should always be at least one active thread
@@ -65,15 +64,19 @@ THREADS_ACTIVE_WARN_UPPER = 6
 # Too many pending threads should not occur
 THREADS_PENDING_WARN = 5
 
+class NoneException(BaseException):
+    """
+    A dummy exception class used for disabling exception handling
+    """
+
 CATCH_ALL_EXC = (Exception, ldap0.LDAPError)
-#CATCH_ALL_EXC = None
+#CATCH_ALL_EXC = NoneException
 
 # days to warn/error when checking server cert validity
 CERT_ERROR_DAYS = 10
 CERT_WARN_DAYS = 50
 
 # set debug parameters for development (normally not needed)
-PYLDAP_TRACE_LEVEL = int(os.environ.get('PYLDAP_TRACE_LEVEL', '0'))
-ldap0._trace_level = PYLDAP_TRACE_LEVEL
-ldap0._trace_file = sys.stderr
+LDAP0_TRACE_LEVEL = int(os.environ.get('LDAP0_TRACE_LEVEL', '0'))
+ldap0._trace_level = LDAP0_TRACE_LEVEL
 # ldap0.set_option(ldap0.OPT_DEBUG_LEVEL,255)

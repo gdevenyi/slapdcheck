@@ -3,17 +3,23 @@
 slapdcheck.openldap - OpenLDAP helper classes
 """
 
-from __future__ import absolute_import
-
-import sys
+import socket
 import time
 import datetime
+import threading
 
 import ldap0
 from ldap0.ldapobject import LDAPObject
+from ldap0.ldapurl import LDAPUrl
 from ldap0.openldap import SyncReplDesc
 
-from .cnf import LDAP_TIMEOUT, PYLDAP_TRACE_LEVEL
+from .cnf import (
+    CATCH_ALL_EXC,
+    CHECK_RESULT_ERROR,
+    CHECK_RESULT_OK,
+    LDAP0_TRACE_LEVEL,
+    LDAP_TIMEOUT,
+)
 
 
 def slapd_pid_fromfile(config_attrs):
@@ -22,15 +28,14 @@ def slapd_pid_fromfile(config_attrs):
     """
     pid_filename = config_attrs['olcPidFile'][0]
     try:
-        pid_file = open(pid_filename, 'rb')
+        with open(pid_filename, 'r', encoding='utf-8') as pid_file:
+            slapd_pid = pid_file.read().strip()
     except IOError:
         slapd_pid = None
-    else:
-        slapd_pid = pid_file.read().strip()
-    return slapd_pid # end of _get_slapd_pid()
+    return slapd_pid # end of slapd_pid_fromfile()
 
 
-class OpenLDAPMonitorCache(object):
+class OpenLDAPMonitorCache:
     """
     Cache object for data read from back-monitor
     """
@@ -70,7 +75,7 @@ class OpenLDAPMonitorCache(object):
         ]
 
 
-class OpenLDAPObject(object):
+class OpenLDAPObject:
     """
     mix-in class for LDAPObject and friends which provides methods useful
     for OpenLDAP's slapd
@@ -125,24 +130,32 @@ class OpenLDAPObject(object):
         'monitorTimestamp',
         'namingContexts'
         'seeAlso',
+        # see OpenLDAP ITS#7770
+        'olmMDBPagesMax',
+        'olmMDBPagesUsed',
+        'olmMDBPagesFree',
+        'olmMDBReadersMax',
+        'olmMDBReadersUsed',
     ]
 
     def __getattr__(self, name):
-        if name in self.naming_context_attrs:
-            if not name in self.__dict__:
-                self.get_naming_context_attrs()
-            return self.__dict__[name]
+        if name not in self.__dict__ and name in self.naming_context_attrs:
+            self.get_naming_context_attrs()
+        return self.__dict__[name]
 
     def get_monitor_entries(self):
         """
         returns dict of all monitoring entries
         """
-        return self.search_s(
-            self.monitorContext[0],
-            ldap0.SCOPE_SUBTREE,
-            self.all_monitor_entries_filter,
-            attrlist=self.all_monitor_entries_attrs,
-        )
+        return {
+            res.dn_s: res.entry_s
+            for res in self.search_s(
+                self.monitorContext[0],
+                ldap0.SCOPE_SUBTREE,
+                self.all_monitor_entries_filter,
+                attrlist=self.all_monitor_entries_attrs,
+            )
+        }
 
     def get_naming_context_attrs(self):
         """
@@ -150,8 +163,8 @@ class OpenLDAPObject(object):
         """
         rootdse = self.read_rootdse_s(attrlist=self.naming_context_attrs)
         for nc_attr in self.naming_context_attrs:
-            if nc_attr in rootdse:
-                self.__setattr__(nc_attr, rootdse[nc_attr])
+            if nc_attr in rootdse.entry_s:
+                setattr(self, nc_attr, rootdse.entry_s[nc_attr])
         return rootdse
 
     def get_sock_listeners(self):
@@ -165,11 +178,11 @@ class OpenLDAPObject(object):
             attrlist=['olcDbSocketPath', 'olcOvSocketOps'],
         )
         result = {}
-        for _, sock_entry in ldap_result:
-            socket_path = sock_entry['olcDbSocketPath'][0]
+        for ldap_res in ldap_result:
+            socket_path = ldap_res.entry_s['olcDbSocketPath'][0]
             result['SlapdSock_'+socket_path] = (
                 socket_path,
-                '/'.join(sorted(sock_entry['olcOvSocketOps'])),
+                '/'.join(sorted(ldap_res.entry_s['olcOvSocketOps'])),
             )
         return result
 
@@ -185,8 +198,8 @@ class OpenLDAPObject(object):
         )
         csn_dict = {}
         try:
-            context_csn_vals = ldap_result['contextCSN']
-        except (KeyError, IndexError):
+            context_csn_vals = ldap_result.entry_s['contextCSN']
+        except KeyError:
             pass
         else:
             for csn_value in context_csn_vals:
@@ -207,15 +220,15 @@ class OpenLDAPObject(object):
             attrlist=['olcDatabase', 'olcSuffix', 'olcSyncrepl'],
         )
         syncrepl_list = []
-        for _, ldap_entry in ldap_result:
-            db_num = int(ldap_entry['olcDatabase'][0].split('}')[0][1:])
+        for ldap_res in ldap_result:
+            db_num = int(ldap_res.entry_s['olcDatabase'][0].split('}')[0][1:])
             srd = [
                 SyncReplDesc(attr_value)
-                for attr_value in ldap_entry['olcSyncrepl']
+                for attr_value in ldap_res.entry_s['olcSyncrepl']
             ]
             syncrepl_list.append((
                 db_num,
-                ldap_entry['olcSuffix'][0],
+                ldap_res.entry_s['olcSuffix'][0],
                 srd,
             ))
         syncrepl_topology = {}
@@ -243,11 +256,11 @@ class OpenLDAPObject(object):
             attrlist=['olcDatabase', 'olcSuffix', 'olcDbDirectory'],
         )
         result = []
-        for _, entry in ldap_result:
-            db_num, db_type = entry['olcDatabase'][0][1:].split('}', 1)
+        for res in ldap_result:
+            db_num, db_type = res.entry_s['olcDatabase'][0][1:].split('}', 1)
             db_num = int(db_num)
-            db_suffix = entry['olcSuffix'][0]
-            db_dir = entry['olcDbDirectory'][0]
+            db_suffix = res.entry_s['olcSuffix'][0]
+            db_dir = res.entry_s['olcDbDirectory'][0]
             result.append((db_num, db_suffix, db_type, db_dir))
         return result  # db_suffixes()
 
@@ -265,9 +278,7 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
     def __init__(
             self,
             uri,
-            trace_level=PYLDAP_TRACE_LEVEL,
-            trace_file=sys.stderr,
-            trace_stack_limit=8,
+            trace_level=LDAP0_TRACE_LEVEL,
             tls_options=None,
             network_timeout=None,
             timeout=None,
@@ -276,12 +287,11 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
             who=None,
             cred=None,
         ):
+        self.connect_latency = None
         LDAPObject.__init__(
             self,
             uri,
             trace_level=trace_level,
-            trace_file=trace_file,
-            trace_stack_limit=trace_stack_limit,
         )
         # Set timeout values
         if network_timeout is None:
@@ -290,8 +300,9 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
             timeout = LDAP_TIMEOUT
         self.set_option(ldap0.OPT_NETWORK_TIMEOUT, network_timeout)
         self.set_option(ldap0.OPT_TIMEOUT, timeout)
-        tls_options = tls_options or {}
+        tls_options = {key: val.encode('utf-8') for key, val in (tls_options or {}).items()}
         self.set_tls_options(**tls_options)
+        conect_start = time.time()
         # Send SASL/EXTERNAL bind which opens connection
         if bind_method == 'sasl':
             self.sasl_non_interactive_bind_s(sasl_mech)
@@ -299,3 +310,145 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
             self.simple_bind_s(who or '', cred or '')
         else:
             raise ValueError('Unknown bind_method %r' % bind_method)
+        self.connect_latency = time.time() - conect_start
+
+
+class SyncreplProviderTask(threading.Thread):
+    """
+    thread for connecting to a slapd provider
+    """
+
+    def __init__(
+            self,
+            check_instance,
+            syncrepl_topology,
+            syncrepl_target_uri,
+        ):
+        threading.Thread.__init__(
+            self,
+            group=None,
+            target=None,
+            name=None,
+            args=(),
+            kwargs={}
+        )
+        self.check_instance = check_instance
+        self.syncrepl_topology = syncrepl_topology
+        self.syncrepl_target_uri = syncrepl_target_uri
+        syncrepl_target_lu_obj = LDAPUrl(self.syncrepl_target_uri)
+        self.syncrepl_target_hostport = syncrepl_target_lu_obj.hostport.lower()
+        self.setName(
+            '-'.join((
+                self.__class__.__name__,
+                self.syncrepl_target_hostport,
+            ))
+        )
+        self.remote_csn_dict = {}
+        self.err_msgs = []
+        self.connect_latency = None
+
+    def run(self):
+        """
+        connect to provider replica and retrieve contextCSN values for databases
+        """
+        # Resolve hostname separately for fine-grained error message
+        syncrepl_target_hostname = self.syncrepl_target_hostport.rsplit(':', 1)[0]
+        try:
+            syncrepl_target_ipaddr = socket.gethostbyname(
+                syncrepl_target_hostname
+            )
+        except CATCH_ALL_EXC as exc:
+            self.err_msgs.append('Error resolving hostname %r: %s' % (
+                syncrepl_target_hostname,
+                exc,
+            ))
+            return
+
+        syncrepl_obj = self.syncrepl_topology[self.syncrepl_target_uri][0][2]
+        try:
+            ldap_conn = SlapdConnection(
+                self.syncrepl_target_uri,
+                tls_options={
+                    # Set TLS connection options from TLS attribute read from
+                    # configuration context
+                    # path name of file containing all trusted CA certificates
+                    'cacert_filename': syncrepl_obj.tls_cacert,
+                    # Use slapd server cert/key for client authentication
+                    # just like used for syncrepl
+                    'client_cert_filename': syncrepl_obj.tls_cert,
+                    'client_key_filename': syncrepl_obj.tls_key,
+                },
+                network_timeout=syncrepl_obj.network_timeout,
+                timeout=syncrepl_obj.timeout,
+                bind_method=syncrepl_obj.bindmethod,
+                sasl_mech=syncrepl_obj.saslmech,
+                who=syncrepl_obj.binddn,
+                cred=syncrepl_obj.credentials,
+            )
+        except CATCH_ALL_EXC as exc:
+            self.err_msgs.append('Error connecting to %r (%s): %s' % (
+                self.syncrepl_target_uri,
+                syncrepl_target_ipaddr,
+                exc,
+            ))
+            return
+        else:
+            syncrepl_target_uri = self.syncrepl_target_uri.lower()
+            self.connect_latency = ldap_conn.connect_latency
+
+        for db_num, db_suffix, _ in self.syncrepl_topology[syncrepl_target_uri]:
+            item_name = '_'.join((
+                'SlapdContextCSN',
+                str(db_num),
+                self.check_instance.subst_item_name_chars(db_suffix),
+                self.check_instance.subst_item_name_chars(self.syncrepl_target_hostport),
+            ))
+            self.check_instance.add_item(item_name)
+            try:
+                self.remote_csn_dict[db_suffix] = \
+                    ldap_conn.get_context_csn(db_suffix)
+            except CATCH_ALL_EXC as exc:
+                self.check_instance.result(
+                    CHECK_RESULT_ERROR,
+                    item_name,
+                    check_output='Exception while retrieving remote contextCSN for %r from %r: %s' % (
+                        db_suffix,
+                        ldap_conn.uri,
+                        exc,
+                    )
+                )
+                continue
+            else:
+                if not self.remote_csn_dict[db_suffix]:
+                    self.check_instance.result(
+                        CHECK_RESULT_ERROR,
+                        item_name,
+                        performance_data=dict(
+                            num_csn_values=len(self.remote_csn_dict[db_suffix]),
+                            connect_latency=ldap_conn.connect_latency,
+                        ),
+                        check_output='no attribute contextCSN for %r on %r' % (
+                            db_suffix,
+                            ldap_conn.uri,
+                        )
+                    )
+                else:
+                    self.check_instance.result(
+                        CHECK_RESULT_OK,
+                        item_name,
+                        performance_data=dict(
+                            num_csn_values=len(self.remote_csn_dict[db_suffix]),
+                            connect_latency=ldap_conn.connect_latency,
+                        ),
+                        check_output='%d contextCSN attribute values retrieved for %r from %r' % (
+                            len(self.remote_csn_dict[db_suffix]),
+                            db_suffix,
+                            ldap_conn.uri,
+                        )
+                    )
+        # Close the LDAP connection to the remote replica
+        try:
+            ldap_conn.unbind_s()
+        except CATCH_ALL_EXC as exc:
+            pass
+        # end of SyncreplProviderTask.run()

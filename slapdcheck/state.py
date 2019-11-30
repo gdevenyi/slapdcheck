@@ -3,12 +3,12 @@
 slapdcheck.state - store local state
 """
 
-from __future__ import absolute_import
-
 import os
 
+from .cnf import CATCH_ALL_EXC
 
-class CheckStateFile(object):
+
+class CheckStateFile:
     """
     Class for state file
     """
@@ -26,7 +26,7 @@ class CheckStateFile(object):
         """
         try:
             state_tuple_list = []
-            with open(self._state_filename, 'rb') as state_file:
+            with open(self._state_filename, 'r', encoding='utf-8') as state_file:
                 state_string_list = state_file.read().split(self.line_sep)
             state_tuple_list = [
                 line.split('=', 1)
@@ -34,7 +34,7 @@ class CheckStateFile(object):
                 if line
             ]
             return dict(state_tuple_list)
-        except IOError:
+        except CATCH_ALL_EXC:
             return {}
 
     def write_state(self, state):
@@ -46,5 +46,5 @@ class CheckStateFile(object):
             for key, val in state.items()
         ]
         state_string_list.append('')
-        with open(self._state_filename, 'wb') as state_file:
+        with open(self._state_filename, 'w', encoding='utf-8') as state_file:
             state_file.write(self.line_sep.join(state_string_list))

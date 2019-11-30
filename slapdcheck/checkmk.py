@@ -5,51 +5,45 @@ monitoring check script for OpenLDAP
 Needs full read access to rootDSE and cn=config and cn=monitor
 (or whereever rootDSE attributes 'configContext' and 'monitorContext'
 are pointing to)
+
+Copyright 2015-2019 Michael Ströder <michael@stroeder.com>
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may
+not use files and content provided on this web site except in compliance
+with the License. You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
 #-----------------------------------------------------------------------
 # Import modules
 #-----------------------------------------------------------------------
 
-from __future__ import absolute_import
-
 import os
 import sys
 import socket
 import time
 import datetime
-import threading
 
-# optional imports from cryptography (aka PyCA) module
-CRYPTOGRAPHY_AVAIL = False
-M2CRYPTO_AVAIL = False
-try:
-    import cryptography.x509
-    from cryptography.hazmat.backends import default_backend as crypto_default_backend
-    import cryptography.hazmat.primitives.asymmetric.rsa
-except ImportError:
-    try:
-        import M2Crypto
-    except ImportError:
-        pass
-    else:
-        M2CRYPTO_AVAIL = True
-else:
-    CRYPTOGRAPHY_AVAIL = True
-
-# Switch off processing .ldaprc or ldap.conf
-# before importing ldap0 with loads libldap.so
-os.environ['LDAPNOINIT'] = '0'
+import cryptography.x509
+from cryptography.hazmat.backends import default_backend as crypto_default_backend
+import cryptography.hazmat.primitives.asymmetric.rsa
 
 # from ldap0 package
 import ldap0
-from ldap0.ldapurl import LDAPUrl
 from ldap0.ldif import LDIFParser
 
 # local package imports
-from . import MonitoringCheck
-from .openldap import OpenLDAPMonitorCache, SlapdConnection, slapd_pid_fromfile
-from .cnf import *
+from slapdcheck import MonitoringCheck
+from slapdcheck.openldap import SyncreplProviderTask
+from slapdcheck.openldap import OpenLDAPMonitorCache, SlapdConnection, slapd_pid_fromfile
+from slapdcheck.cnf import *
 
 #-----------------------------------------------------------------------
 # Classes
@@ -92,138 +86,7 @@ class CheckMkLocalCheck(MonitoringCheck):
                     msg=check_msg,
                 )
             )
-        return  # output()
-
-
-class SyncreplProviderTask(threading.Thread):
-    """
-    thread for connecting to a slapd provider
-    """
-
-    def __init__(
-            self,
-            check_instance,
-            syncrepl_topology,
-            syncrepl_target_uri,
-        ):
-        threading.Thread.__init__(
-            self,
-            group=None,
-            target=None,
-            name=None,
-            args=(),
-            kwargs={}
-        )
-        self.check_instance = check_instance
-        self.syncrepl_topology = syncrepl_topology
-        self.syncrepl_target_uri = syncrepl_target_uri
-        syncrepl_target_lu_obj = LDAPUrl(self.syncrepl_target_uri)
-        self.syncrepl_target_hostport = syncrepl_target_lu_obj.hostport.lower()
-        self.setName(
-            '-'.join((
-                self.__class__.__name__,
-                self.syncrepl_target_hostport,
-            ))
-        )
-        self.remote_csn_dict = {}
-        self.err_msgs = []
-
-    def run(self):
-        """
-        connect to provider replica and retrieve contextCSN values for databases
-        """
-        # Resolve hostname separately for fine-grained error message
-        syncrepl_target_hostname = self.syncrepl_target_hostport.rsplit(':', 1)[0]
-        try:
-            syncrepl_target_ipaddr = socket.gethostbyname(
-                syncrepl_target_hostname
-            )
-        except CATCH_ALL_EXC as exc:
-            self.err_msgs.append('Error resolving hostname %r: %s' % (
-                syncrepl_target_hostname,
-                exc,
-            ))
-            return
-
-        syncrepl_obj = self.syncrepl_topology[self.syncrepl_target_uri][0][2]
-        try:
-            ldap_conn = SlapdConnection(
-                self.syncrepl_target_uri,
-                tls_options={
-                    # Set TLS connection options from TLS attribute read from
-                    # configuration context
-                    # path name of file containing all trusted CA certificates
-                    'cacert_filename': syncrepl_obj.tls_cacert,
-                    # Use slapd server cert/key for client authentication
-                    # just like used for syncrepl
-                    'client_cert_filename': syncrepl_obj.tls_cert,
-                    'client_key_filename': syncrepl_obj.tls_key,
-                },
-                network_timeout=syncrepl_obj.network_timeout,
-                timeout=syncrepl_obj.timeout,
-                bind_method=syncrepl_obj.bindmethod,
-                sasl_mech=syncrepl_obj.saslmech,
-                who=syncrepl_obj.binddn,
-                cred=syncrepl_obj.credentials,
-            )
-        except CATCH_ALL_EXC as exc:
-            self.err_msgs.append('Error connecting to %r (%s): %s' % (
-                self.syncrepl_target_uri,
-                syncrepl_target_ipaddr,
-                exc,
-            ))
-            return
-        else:
-            syncrepl_target_uri = self.syncrepl_target_uri.lower()
-
-        for db_num, db_suffix, _ in self.syncrepl_topology[syncrepl_target_uri]:
-            item_name = '_'.join((
-                'SlapdContextCSN',
-                str(db_num),
-                self.check_instance.subst_item_name_chars(db_suffix),
-                self.check_instance.subst_item_name_chars(self.syncrepl_target_hostport),
-            ))
-            self.check_instance.add_item(item_name)
-            try:
-                self.remote_csn_dict[db_suffix] = \
-                    ldap_conn.get_context_csn(db_suffix)
-            except CATCH_ALL_EXC as exc:
-                self.check_instance.result(
-                    CHECK_RESULT_ERROR,
-                    item_name,
-                    check_output='Exception while retrieving remote contextCSN for %r from %r: %s' % (
-                        db_suffix,
-                        ldap_conn.uri,
-                        exc,
-                    )
-                )
-                continue
-            else:
-                if not self.remote_csn_dict[db_suffix]:
-                    self.check_instance.result(
-                        CHECK_RESULT_ERROR,
-                        item_name,
-                        check_output='no attribute contextCSN for %r on %r' % (
-                            db_suffix,
-                            ldap_conn.uri,
-                        )
-                    )
-                else:
-                    self.check_instance.result(
-                        CHECK_RESULT_OK,
-                        item_name,
-                        check_output='%d contextCSN attribute values retrieved for %r from %r' % (
-                            len(self.remote_csn_dict[db_suffix]),
-                            db_suffix,
-                            ldap_conn.uri,
-                        )
-                    )
-        # Close the LDAP connection to the remote replica
-        try:
-            ldap_conn.unbind_s()
-        except CATCH_ALL_EXC as exc:
-            pass
-        return # end of SyncreplProviderTask.run()
+        # end of output()
 
 
 class SlapdCheck(CheckMkLocalCheck):
@@ -281,7 +144,7 @@ class SlapdCheck(CheckMkLocalCheck):
                     'SlapdSASLHostname',
                     check_output='olcSaslHost %r found' % (olc_sasl_host),
                 )
-        return # end of _check_sasl_hostname()
+        # end of _check_sasl_hostname()
 
     def _check_tls_file(self, config_attrs):
         # try to read CA and server cert/key files
@@ -299,7 +162,8 @@ class SlapdCheck(CheckMkLocalCheck):
                     'Attribute %r not set' % (tls_attr_name)
                 )
             try:
-                tls_pem[tls_attr_name] = open(fname, 'rb').read()
+                with open(fname, 'rb') as tls_pem_file:
+                    tls_pem[tls_attr_name] = tls_pem_file.read()
             except CATCH_ALL_EXC as exc:
                 file_read_errors.append(
                     'Error reading %r: %s' % (fname, exc)
@@ -312,39 +176,18 @@ class SlapdCheck(CheckMkLocalCheck):
                 check_output=' / '.join(file_read_errors)
             )
             return
-        if not CRYPTOGRAPHY_AVAIL and not M2CRYPTO_AVAIL:
-            # no crypto modules present => abort
-            self.result(
-                CHECK_RESULT_UNKNOWN,
-                'SlapdCert',
-                check_output='no crypto modules present => could not check validity of %r' % (
-                    config_attrs['olcTLSCertificateFile'][0],
-                ),
-            )
-            return
-        if CRYPTOGRAPHY_AVAIL:
-            server_cert_obj = cryptography.x509.load_pem_x509_certificate(
-                tls_pem['olcTLSCertificateFile'],
-                crypto_default_backend(),
-            )
-            server_key_obj = cryptography.hazmat.primitives.serialization.load_pem_private_key(
-                tls_pem['olcTLSCertificateKeyFile'],
-                None,
-                crypto_default_backend(),
-            )
-            cert_not_after = server_cert_obj.not_valid_after
-            cert_not_before = server_cert_obj.not_valid_before
-            modulus_match = server_cert_obj.public_key().public_numbers().n == server_key_obj.public_key().public_numbers().n
-            crypto_module = 'cryptography'
-        elif M2CRYPTO_AVAIL:
-            server_cert_obj = M2Crypto.X509.load_cert_string(
-                tls_pem['olcTLSCertificateFile'],
-                M2Crypto.X509.FORMAT_PEM,
-            )
-            cert_not_after = server_cert_obj.get_not_after().get_datetime()
-            cert_not_before = server_cert_obj.get_not_before().get_datetime()
-            modulus_match = None
-            crypto_module = 'M2Crypto'
+        server_cert_obj = cryptography.x509.load_pem_x509_certificate(
+            tls_pem['olcTLSCertificateFile'],
+            crypto_default_backend(),
+        )
+        server_key_obj = cryptography.hazmat.primitives.serialization.load_pem_private_key(
+            tls_pem['olcTLSCertificateKeyFile'],
+            None,
+            crypto_default_backend(),
+        )
+        cert_not_after = server_cert_obj.not_valid_after
+        cert_not_before = server_cert_obj.not_valid_before
+        modulus_match = server_cert_obj.public_key().public_numbers().n == server_key_obj.public_key().public_numbers().n
         utc_now = datetime.datetime.now(cert_not_after.tzinfo)
         cert_validity_rest = cert_not_after - utc_now
         if modulus_match is False or cert_validity_rest.days <= CERT_ERROR_DAYS:
@@ -362,46 +205,45 @@ class SlapdCheck(CheckMkLocalCheck):
             check_output=(
                 'Server cert %r valid until %s UTC '
                 '(%d days left, %0.1f %% elapsed), '
-                'modulus_match==%r, '
-                '(via module %s)'
+                'modulus_match==%r'
             ) % (
                 config_attrs['olcTLSCertificateFile'][0],
                 cert_not_after,
                 cert_validity_rest.days,
                 elapsed_percentage,
                 modulus_match,
-                crypto_module,
             ),
         )
-        return # end of _check_tls_file()
+        # end of _check_tls_file()
 
     def _check_local_ldaps(self, ldaps_uri, my_authz_id):
         """
         Connect and bind to local slapd like a remote client
         mainly to check whether LDAPS with client cert works and maps expected authz-DN
         """
+        client_tls_options = {
+            # Set TLS connection options from TLS attribute read from
+            # configuration context
+            # path name of file containing all trusted CA certificates
+            'cacert_filename': self._config_attrs['olcTLSCACertificateFile'][0],
+            # Use slapd server cert/key for client authentication
+            # just like used for syncrepl
+            'client_cert_filename': self._config_attrs['olcTLSCertificateFile'][0],
+            'client_key_filename': self._config_attrs['olcTLSCertificateKeyFile'][0],
+        }
         try:
             ldaps_conn = SlapdConnection(
                 ldaps_uri,
-                tls_options={
-                    # Set TLS connection options from TLS attribute read from
-                    # configuration context
-                    # path name of file containing all trusted CA certificates
-                    'cacert_filename': self._config_attrs['olcTLSCACertificateFile'][0],
-                    # Use slapd server cert/key for client authentication
-                    # just like used for syncrepl
-                    'client_cert_filename': self._config_attrs['olcTLSCertificateFile'][0],
-                    'client_key_filename': self._config_attrs['olcTLSCertificateKeyFile'][0],
-                },
+                tls_options=client_tls_options,
             )
         except CATCH_ALL_EXC as exc:
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdSelfConn',
-                check_output='Error connecting to %r: %s %s' % (
+                check_output='Error connecting to %r: %s / client_tls_options = %r' % (
                     ldaps_uri,
                     exc,
-                    self._config_attrs,
+                    client_tls_options,
                 )
             )
         else:
@@ -423,6 +265,7 @@ class SlapdCheck(CheckMkLocalCheck):
                     self.result(
                         CHECK_RESULT_ERROR,
                         'SlapdSelfConn',
+                        performance_data={'connect_latency': ldaps_conn.connect_latency},
                         check_output='Received unexpected authz-DN from %r: %r' % (
                             ldaps_conn.uri,
                             wai,
@@ -432,13 +275,14 @@ class SlapdCheck(CheckMkLocalCheck):
                     self.result(
                         CHECK_RESULT_OK,
                         'SlapdSelfConn',
+                        performance_data={'connect_latency': ldaps_conn.connect_latency},
                         check_output='successfully bound to %r as %r' % (
                             ldaps_conn.uri,
                             wai,
                         ),
                     )
             ldaps_conn.unbind_s()
-        return # end of _check_local_ldaps()
+        # end of _check_local_ldaps()
 
     def _check_slapd_sock(self):
         """
@@ -448,17 +292,19 @@ class SlapdCheck(CheckMkLocalCheck):
             """
             Send MONITOR request to Unix domain socket in `sock_path'
             """
-            _sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            _sock.connect(sock_path)
-            _sock.settimeout(SLAPD_SOCK_TIMEOUT)
-            _sock_f = _sock.makefile()
-            _sock_f.write('MONITOR\n')
-            _sock_f.flush()
-            return _sock_f.read() # end of _read_sock_monitor
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _sock:
+                _sock.connect(sock_path)
+                _sock.settimeout(SLAPD_SOCK_TIMEOUT)
+                _sock_f = _sock.makefile('rwb')
+                _sock_f.write(b'MONITOR\n')
+                _sock_f.flush()
+                res = _sock_f.read()
+            return res
+            # end of _read_sock_monitor
 
         def _parse_sock_response(sock_response):
             # strip ENTRY\n from response and parse the rest as LDIF
-            _, sock_monitor_entry = LDIFParser.fromstring(
+            _, sock_monitor_entry = LDIFParser.frombuf(
                 sock_response[6:],
                 ignored_attr_types=['sockLogLevel'],
                 max_entries=1
@@ -467,7 +313,7 @@ class SlapdCheck(CheckMkLocalCheck):
             # only add numeric monitor data to performance metrics
             for metric_key in sock_monitor_entry.keys():
                 try:
-                    sock_perf_data[metric_key] = float(sock_monitor_entry[metric_key][0])
+                    sock_perf_data[metric_key.decode('ascii')] = float(sock_monitor_entry[metric_key][0])
                 except ValueError:
                     continue
             return sock_perf_data # end of _parse_sock_response()
@@ -519,7 +365,7 @@ class SlapdCheck(CheckMkLocalCheck):
                         performance_data=sock_perf_data,
                         check_output=', '.join(check_msgs),
                     )
-        return # end of _check_slapd_sock()
+        # end of _check_slapd_sock()
 
     def _check_slapd_start(self, config_attrs):
         """
@@ -540,7 +386,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 continue
             check_filename = config_attrs[fattr][0]
             try:
-                check_file_mtime = datetime.datetime.utcfromtimestamp(os.stat(check_filename).st_mtime)
+                check_file_mtime = datetime.datetime.utcfromtimestamp(int(os.stat(check_filename).st_mtime))
             except OSError:
                 pass
             else:
@@ -567,7 +413,7 @@ class SlapdCheck(CheckMkLocalCheck):
                     utc_now-start_time,
                 )
             )
-        return # end of _check_slapd_start()
+        # end of _check_slapd_start()
 
     def _get_local_csns(self, syncrepl_list):
         local_csn_dict = {}
@@ -629,19 +475,25 @@ class SlapdCheck(CheckMkLocalCheck):
             'cn=Current,cn=Connections',
             'monitorCounter',
         )
-        # We expect one per existing machine, plus a low number for web2ldap,
-        # equally distributed over the nodes:
+        max_connections = self._monitor_cache.get_value(
+            'cn=Max File Descriptors,cn=Connections',
+            'monitorCounter',
+        )
+        current_connections_percentage = 100.0 * current_connections / max_connections
         state = CHECK_RESULT_WARNING * int(
             current_connections < CONNECTIONS_WARN_LOWER or
-            current_connections > CONNECTIONS_WARN_UPPER
+            current_connections_percentage >= CONNECTIONS_WARN_PERCENTAGE
         )
         self.result(
             state,
             'SlapdConns',
-            performance_data={'count': current_connections},
-            check_output='%d open connections' % (current_connections),
+            performance_data={
+                'count': current_connections,
+                'percent': current_connections_percentage,
+            },
+            check_output='%d open connections (max. %d)' % (current_connections, max_connections),
         )
-        return # end of _check_conns()
+        # end of _check_conns()
 
     def _check_threads(self):
         """
@@ -670,7 +522,7 @@ class SlapdCheck(CheckMkLocalCheck):
             check_output='Thread counts active:%d pending: %d' % (
                 threads_active, threads_pending)
         )
-        return # end of _check_threads()
+        # end of _check_threads()
 
     def _get_slapd_perfstats(self):
         """
@@ -758,9 +610,9 @@ class SlapdCheck(CheckMkLocalCheck):
             ops_all_completed_rate = self._get_rate('ops_all_completed', ops_all_completed, last_time_span)
             self._next_state['ops_all_initiated'] = ops_all_initiated
             self._next_state['ops_all_completed'] = ops_all_completed
-            if OPS_WAITING_CRIT != None and ops_all_waiting > OPS_WAITING_CRIT:
+            if OPS_WAITING_CRIT is not None and ops_all_waiting > OPS_WAITING_CRIT:
                 state = CHECK_RESULT_ERROR
-            elif OPS_WAITING_WARN != None and ops_all_waiting > OPS_WAITING_WARN:
+            elif OPS_WAITING_WARN is not None and ops_all_waiting > OPS_WAITING_WARN:
                 state = CHECK_RESULT_WARNING
             else:
                 state = CHECK_RESULT_OK
@@ -780,7 +632,78 @@ class SlapdCheck(CheckMkLocalCheck):
                     ops_all_waiting,
                 ),
             )
-        return # end of _get_slapd_perfstats()
+        # end of _get_slapd_perfstats()
+
+    def _check_mdb_size(self, db_num, db_suffix, db_type, db_dir):
+        if db_type != 'mdb':
+            return
+        item_name = '_'.join((
+            'SlapdMDBSize',
+            str(db_num),
+            self.subst_item_name_chars(db_suffix),
+        ))
+        self.add_item(item_name)
+        try:
+            mdb_pages_max = self._monitor_cache.get_value(
+                'cn=Database %d,cn=Databases' % (db_num),
+                'olmMDBPagesMax',
+            )
+            mdb_pages_used = self._monitor_cache.get_value(
+                'cn=Database %d,cn=Databases' % (db_num),
+                'olmMDBPagesUsed',
+            )
+        except KeyError:
+            # ITS#7770 not available (prior to OpenLDAP 2.4.48)
+            # => fall back to naive file stat method
+            mdb_filename = os.path.join(db_dir, 'data.mdb')
+            try:
+                mdb_max_size = os.stat(mdb_filename).st_size
+                mdb_real_size = os.stat(mdb_filename).st_blocks * 512
+            except OSError as exc:
+                self.result(
+                    CHECK_RESULT_ERROR,
+                    item_name,
+                    check_output='OS error stating %r: %s' % (
+                        mdb_filename,
+                        exc,
+                    ),
+                )
+            else:
+                mdb_use_percentage = 100 * \
+                    float(mdb_real_size) / float(mdb_max_size)
+                self.result(
+                    CHECK_RESULT_OK,
+                    item_name,
+                    check_output='DB file %r has %d of max. %d bytes (%0.1f %%)' % (
+                        mdb_filename,
+                        mdb_real_size,
+                        mdb_max_size,
+                        mdb_use_percentage,
+                    ),
+                    performance_data=dict(
+                        mdb_pages_used=mdb_real_size/4096,
+                        mdb_pages_max=mdb_max_size/4096,
+                        mdb_use_percentage=mdb_use_percentage,
+                    ),
+                )
+        else:
+            mdb_use_percentage = 100 * float(mdb_pages_used) / float(mdb_pages_max)
+            self.result(
+                CHECK_RESULT_OK,
+                item_name,
+                check_output='LMDB in %r uses %d of max. %d pages (%0.1f %%)' % (
+                    db_dir,
+                    mdb_pages_used,
+                    mdb_pages_max,
+                    mdb_use_percentage,
+                ),
+                performance_data=dict(
+                    mdb_pages_used=mdb_pages_used,
+                    mdb_pages_max=mdb_pages_max,
+                    mdb_use_percentage=mdb_use_percentage,
+                ),
+            )
+        # end of _check_mdb_size()
 
     def _check_databases(self):
         try:
@@ -791,146 +714,115 @@ class SlapdCheck(CheckMkLocalCheck):
                 'SlapdDatabases',
                 check_output='error retrieving DB suffixes: %s' % (exc)
             )
-        else:
-            self.result(
-                CHECK_RESULT_OK,
-                'SlapdDatabases',
-                check_output='Found %d real databases: %s' % (
-                    len(db_suffixes),
-                    ' / '.join([
-                        '{%d}%s: %s' % (n, t, s)
-                        for n, s, t, _ in db_suffixes
-                    ]),
-                )
+            return
+        self.result(
+            CHECK_RESULT_OK,
+            'SlapdDatabases',
+            check_output='Found %d real databases: %s' % (
+                len(db_suffixes),
+                ' / '.join([
+                    '{%d}%s: %s' % (n, t, s)
+                    for n, s, t, _ in db_suffixes
+                ]),
             )
-            for db_num, db_suffix, db_type, db_dir in db_suffixes:
-                # Check file sizes of MDB database files
-                if db_type == 'mdb':
-                    item_name = '_'.join((
-                        'SlapdMDBSize',
-                        str(db_num),
-                        self.subst_item_name_chars(db_suffix),
-                    ))
-                    self.add_item(item_name)
-                    mdb_filename = os.path.join(db_dir, 'data.mdb')
-                    try:
-                        mdb_max_size = os.stat(mdb_filename).st_size
-                        mdb_real_size = os.stat(mdb_filename).st_blocks * 512
-                    except OSError as exc:
+        )
+        for db_num, db_suffix, db_type, db_dir in db_suffixes:
+            # Check file sizes of MDB database files
+            self._check_mdb_size(db_num, db_suffix, db_type, db_dir)
+
+            # Count LDAP entries with no-op search controls
+            item_name = '_'.join((
+                'SlapdEntryCount',
+                str(db_num),
+                self.subst_item_name_chars(db_suffix),
+            ))
+            self.add_item(item_name)
+            try:
+                noop_start_timestamp = time.time()
+                noop_result = self._ldapi_conn.noop_search(
+                    db_suffix,
+                    timeout=NOOP_SEARCH_TIMEOUT,
+                )
+            except ldap0.TIMEOUT:
+                self.result(
+                    CHECK_RESULT_WARNING,
+                    item_name,
+                    check_output='Request timeout %0.1f s reached while retrieving entry count for %r.' % (
+                        LDAP_TIMEOUT,
+                        db_suffix,
+                    )
+                )
+            except ldap0.TIMELIMIT_EXCEEDED:
+                self.result(
+                    CHECK_RESULT_WARNING,
+                    item_name,
+                    check_output='Search time limit %0.1f s exceeded while retrieving entry count for %r.' % (
+                        NOOP_SEARCH_TIMEOUT,
+                        db_suffix,
+                    )
+                )
+            except ldap0.UNAVAILABLE_CRITICAL_EXTENSION:
+                self.result(
+                    CHECK_RESULT_NOOP_SRCH_UNAVAILABLE,
+                    item_name,
+                    check_output='no-op search control not supported'
+                )
+            except CATCH_ALL_EXC as exc:
+                self.result(
+                    CHECK_RESULT_ERROR,
+                    item_name,
+                    check_output='Error retrieving entry count for %r: %s' % (db_suffix, exc)
+                )
+            else:
+                noop_response_time = time.time() - noop_start_timestamp
+                if noop_result is None:
+                    self.result(
+                        CHECK_RESULT_WARNING,
+                        item_name,
+                        check_output='Could not retrieve entry count (result was None)',
+                    )
+                else:
+                    num_all_search_results, num_all_search_continuations = noop_result
+                    if num_all_search_continuations:
                         self.result(
                             CHECK_RESULT_ERROR,
                             item_name,
-                            check_output='OS error stating %r: %s' % (
-                                mdb_filename,
-                                exc,
-                            ),
-                        )
-                    else:
-                        mdb_use_percentage = 100 * \
-                            float(mdb_real_size) / float(mdb_max_size)
-                        self.result(
-                            CHECK_RESULT_OK,
-                            item_name,
-                            check_output='DB file %r has %d of max. %d bytes (%0.1f %%)' % (
-                                mdb_filename,
-                                mdb_real_size,
-                                mdb_max_size,
-                                mdb_use_percentage,
+                            performance_data={
+                                'count': num_all_search_results,
+                            },
+                            check_output='%r has %d referrals! (response time %0.1f s)' % (
+                                db_suffix,
+                                num_all_search_continuations,
+                                noop_response_time,
                             )
                         )
-                # Count LDAP entries with no-op search controls
-                item_name = '_'.join((
-                    'SlapdEntryCount',
-                    str(db_num),
-                    self.subst_item_name_chars(db_suffix),
-                ))
-                self.add_item(item_name)
-                try:
-                    noop_start_timestamp = time.time()
-                    noop_result = self._ldapi_conn.noop_search(
-                        db_suffix,
-                        timeout=NOOP_SEARCH_TIMEOUT,
-                    )
-                except ldap0.TIMEOUT:
-                    self.result(
-                        CHECK_RESULT_WARNING,
-                        item_name,
-                        check_output='Request timeout %0.1f s reached while retrieving entry count for %r.' % (
-                            LDAP_TIMEOUT,
-                            db_suffix,
-                        )
-                    )
-                except ldap0.TIMELIMIT_EXCEEDED:
-                    self.result(
-                        CHECK_RESULT_WARNING,
-                        item_name,
-                        check_output='Search time limit %0.1f s exceeded while retrieving entry count for %r.' % (
-                            NOOP_SEARCH_TIMEOUT,
-                            db_suffix,
-                        )
-                    )
-                except ldap0.UNAVAILABLE_CRITICAL_EXTENSION:
-                    self.result(
-                        CHECK_RESULT_NOOP_SRCH_UNAVAILABLE,
-                        item_name,
-                        check_output='no-op search control not supported'
-                    )
-                except CATCH_ALL_EXC as exc:
-                    self.result(
-                        CHECK_RESULT_ERROR,
-                        item_name,
-                        check_output='Error retrieving entry count for %r: %s' % (db_suffix, exc)
-                    )
-                else:
-                    noop_response_time = time.time() - noop_start_timestamp
-                    if noop_result is None:
+                    elif num_all_search_results < MINIMUM_ENTRY_COUNT:
                         self.result(
                             CHECK_RESULT_WARNING,
                             item_name,
-                            check_output='Could not retrieve entry count (result was None)',
+                            performance_data={
+                                'count': num_all_search_results,
+                            },
+                            check_output='%r only has %d entries (response time %0.1f s)' % (
+                                db_suffix,
+                                num_all_search_results,
+                                noop_response_time,
+                            )
                         )
                     else:
-                        num_all_search_results, num_all_search_continuations = noop_result
-                        if num_all_search_continuations:
-                            self.result(
-                                CHECK_RESULT_ERROR,
-                                item_name,
-                                performance_data={
-                                    'count': num_all_search_results,
-                                },
-                                check_output='%r has %d referrals! (response time %0.1f s)' % (
-                                    db_suffix,
-                                    num_all_search_continuations,
-                                    noop_response_time,
-                                )
+                        self.result(
+                            CHECK_RESULT_OK,
+                            item_name,
+                            performance_data={
+                                'count': num_all_search_results,
+                            },
+                            check_output='%r has %d entries (response time %0.1f s)' % (
+                                db_suffix,
+                                num_all_search_results,
+                                noop_response_time,
                             )
-                        elif num_all_search_results < MINIMUM_ENTRY_COUNT:
-                            self.result(
-                                CHECK_RESULT_WARNING,
-                                item_name,
-                                performance_data={
-                                    'count': num_all_search_results,
-                                },
-                                check_output='%r only has %d entries (response time %0.1f s)' % (
-                                    db_suffix,
-                                    num_all_search_results,
-                                    noop_response_time,
-                                )
-                            )
-                        else:
-                            self.result(
-                                CHECK_RESULT_OK,
-                                item_name,
-                                performance_data={
-                                    'count': num_all_search_results,
-                                },
-                                check_output='%r has %d entries (response time %0.1f s)' % (
-                                    db_suffix,
-                                    num_all_search_results,
-                                    noop_response_time,
-                                )
-                            )
-        return # end of _check_databases()
+                        )
+        # end of _check_databases()
 
     def _check_providers(self, syncrepl_topology):
         """
@@ -939,6 +831,7 @@ class SlapdCheck(CheckMkLocalCheck):
         remote_csn_dict = {}
         syncrepl_target_fail_msgs = []
         task_dict = {}
+        task_connect_latency = {}
 
         for syncrepl_target_uri in syncrepl_topology.keys():
             # start separate threads for parallelly connecting to slapd providers
@@ -957,6 +850,8 @@ class SlapdCheck(CheckMkLocalCheck):
                 remote_csn_dict[syncrepl_target_uri] = task.remote_csn_dict
             if task.err_msgs:
                 syncrepl_target_fail_msgs.extend(task.err_msgs)
+            if task.connect_latency is not None:
+                task_connect_latency[syncrepl_target_uri] = task.connect_latency
 
         if syncrepl_target_fail_msgs or \
            len(remote_csn_dict) < len(syncrepl_topology):
@@ -973,7 +868,10 @@ class SlapdCheck(CheckMkLocalCheck):
             'SlapdProviders',
             performance_data={
                 'count': len(remote_csn_dict),
+                'total': len(syncrepl_topology),
                 'percent': slapd_provider_percentage,
+                'avg_latency': sum(task_connect_latency.values())/len(task_connect_latency) if task_connect_latency else 0.0,
+                'max_latency': max(task_connect_latency.values()) if task_connect_latency else 0.0,
             },
             check_output='Connected to %d of %d (%0.1f%%) providers: %s' % (
                 len(remote_csn_dict),
@@ -1011,7 +909,7 @@ class SlapdCheck(CheckMkLocalCheck):
                     'olcTLSCertificateKeyFile',
                     'olcTLSDHParamFile',
                 ],
-            )
+            ).entry_s
         except CATCH_ALL_EXC as exc:
             self.result(
                 CHECK_RESULT_ERROR,
@@ -1169,7 +1067,7 @@ class SlapdCheck(CheckMkLocalCheck):
                             )
                         )
 
-            if SYNCREPL_TIMEDELTA_CRIT != None and \
+            if SYNCREPL_TIMEDELTA_CRIT is not None and \
                max_csn_timedelta > SYNCREPL_TIMEDELTA_CRIT:
                 old_critical_timestamp = float(
                     self._state.data.get(
@@ -1181,7 +1079,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 self._next_state[item_name+'_critical'] = old_critical_timestamp
             else:
                 self._next_state[item_name + '_critical'] = -1.0
-            if SYNCREPL_TIMEDELTA_WARN != None and \
+            if SYNCREPL_TIMEDELTA_WARN is not None and \
                 max_csn_timedelta > SYNCREPL_TIMEDELTA_WARN:
                 old_warn_timestamp = float(
                     self._state.data.get(
@@ -1212,7 +1110,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 ),
             )
 
-        return  # checks()
+        # end of checks()
 
 
 def run():
@@ -1224,3 +1122,7 @@ def run():
         state_filename=os.path.basename(sys.argv[0][:-3]),
     )
     slapd_check.run()
+
+
+if __name__ == '__main__':
+    run()

@@ -3,8 +3,6 @@
 slapdcheck - module package which implements OpenLDAP monitor checks
 """
 
-from __future__ import absolute_import
-
 import sys
 import pprint
 import logging
@@ -14,9 +12,15 @@ from .state import CheckStateFile
 from .cnf import CHECK_RESULT_UNKNOWN
 
 
-class MonitoringCheck(object):
+class NoneException(BaseException):
     """
-    base class for a monitoting check
+    A dummy exception class used for disabling exception handling
+    """
+
+
+class MonitoringCheck:
+    """
+    base class for a monitoring check
     """
 
     item_names = None
@@ -35,14 +39,14 @@ class MonitoringCheck(object):
         for item_name in self.item_names or []:
             self.add_item(item_name)
         self._output_file = output_file
-        if state_filename != None:
+        if state_filename is not None:
             # Initialize local state file and read old state if it exists
             self._state = CheckStateFile(state_filename)
             # Generate *new* state dict to be updated within check and stored
             # later
             self._next_state = {}
         self.script_name = os.path.basename(sys.argv[0])
-        return  # __init__()
+        # end of __init__()
 
     def _get_rate(self, key, current_val, time_span):
         last_val = int(self._state.data.get(key, '0'))
@@ -107,11 +111,9 @@ class MonitoringCheck(object):
                 s_list.append(char)
         return ''.join(s_list)  # _subst_item_name_chars()
 
-    def serialize_perf_data(self, pdat):
-        """
-        serialize performance data dict to a string
-        """
-        return repr(pdat)
+    @staticmethod
+    def serialize_perf_data(performance_data):
+        return str(performance_data)
 
     def result(self, status, item_name, performance_data=None, check_output=None):
         """
@@ -137,7 +139,7 @@ class MonitoringCheck(object):
             performance_data or {},
             check_output or u'',
         )
-        return  # result()
+        # end of result()
 
     def output(self):
         """
