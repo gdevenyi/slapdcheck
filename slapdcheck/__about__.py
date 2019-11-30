@@ -6,8 +6,8 @@ import collections
 
 VersionInfo = collections.namedtuple('version_info', ('major', 'minor', 'micro'))
 __version_info__ = VersionInfo(
-    major=4,
-    minor=0,
+    major=3,
+    minor=1,
     micro=0,
 )
 __version__ = '.'.join(str(val) for val in __version_info__)
