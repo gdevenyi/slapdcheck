@@ -6,7 +6,7 @@ Monitoring [OpenLDAP](https://www.openldap.org) *slapd*.
 Requirements
 ------------
 
-  * Python 2.x has to be installed
+  * Python 3.6+ has to be installed
   * Needs module [ldap0](https://pypi.org/project/ldap0/)
   * Config backend has to be configured and readable.
   * Monitoring backend has to be configured and readable.
