@@ -42,7 +42,7 @@ from ldap0.ldif import LDIFParser
 # local package imports
 from slapdcheck import MonitoringCheck
 from slapdcheck.openldap import SyncreplProviderTask
-from slapdcheck.openldap import OpenLDAPMonitorCache, SlapdConnection, slapd_pid_fromfile
+from slapdcheck.openldap import OpenLDAPMonitorCache, SlapdConnection
 from slapdcheck.cnf import (
     CATCH_ALL_EXC,
     CERT_ERROR_DAYS,
@@ -142,12 +142,12 @@ class SlapdCheck(CheckMkLocalCheck):
         self._config_attrs = {}
         self._monitor_cache = {}
 
-    def _check_sasl_hostname(self, config_attrs):
+    def _check_sasl_hostname(self):
         """
         check whether SASL hostname is resolvable
         """
         try:
-            olc_sasl_host = config_attrs['olcSaslHost'][0]
+            olc_sasl_host = self._config_attrs['olcSaslHost'][0]
         except (KeyError, IndexError):
             self.result(
                 CHECK_RESULT_OK,
@@ -171,7 +171,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 )
         # end of _check_sasl_hostname()
 
-    def _check_tls_file(self, config_attrs):
+    def _check_tls_file(self):
         # try to read CA and server cert/key files
         file_read_errors = []
         tls_pem = {}
@@ -181,7 +181,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 'olcTLSCertificateKeyFile',
             ):
             try:
-                fname = config_attrs[tls_attr_name][0]
+                fname = self._config_attrs[tls_attr_name][0]
             except KeyError:
                 file_read_errors.append(
                     'Attribute %r not set' % (tls_attr_name)
@@ -232,7 +232,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 '(%d days left, %0.1f %% elapsed), '
                 'modulus_match==%r'
             ) % (
-                config_attrs['olcTLSCertificateFile'][0],
+                self._config_attrs['olcTLSCertificateFile'][0],
                 cert_not_after,
                 cert_validity_rest.days,
                 elapsed_percentage,
@@ -392,7 +392,20 @@ class SlapdCheck(CheckMkLocalCheck):
                     )
         # end of _check_slapd_sock()
 
-    def _check_slapd_start(self, config_attrs):
+    def _read_pid(self):
+        """
+        read slapd's PID from file
+        """
+        pid_filename = self._config_attrs['olcPidFile'][0]
+        try:
+            with open(pid_filename, 'r', encoding='utf-8') as pid_file:
+                slapd_pid = pid_file.read().strip()
+        except IOError:
+            slapd_pid = None
+        return slapd_pid
+        # end of _read_pid()
+
+    def _check_slapd_start(self):
         """
         check whether slapd should be restarted
         """
@@ -407,9 +420,9 @@ class SlapdCheck(CheckMkLocalCheck):
                 'olcTLSCertificateKeyFile',
                 'olcTLSDHParamFile',
             ):
-            if not fattr in config_attrs:
+            if not fattr in self._config_attrs:
                 continue
-            check_filename = config_attrs[fattr][0]
+            check_filename = self._config_attrs[fattr][0]
             try:
                 check_file_mtime = datetime.datetime.utcfromtimestamp(int(os.stat(check_filename).st_mtime))
             except OSError:
@@ -422,7 +435,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 CHECK_RESULT_WARNING,
                 'SlapdStart',
                 check_output='slapd[%s] needs restart! Started at %s, %s ago, now newer config: %s' % (
-                    slapd_pid_fromfile(config_attrs),
+                    self._read_pid(),
                     start_time,
                     utc_now-start_time,
                     ' / '.join(newer_files),
@@ -433,7 +446,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 CHECK_RESULT_OK,
                 'SlapdStart',
                 check_output='slapd[%s] started at %s, %s ago' % (
-                    slapd_pid_fromfile(config_attrs),
+                    self._read_pid(),
                     start_time,
                     utc_now-start_time,
                 )
@@ -928,8 +941,8 @@ class SlapdCheck(CheckMkLocalCheck):
                 )
             )
 
-            self._check_sasl_hostname(self._config_attrs)
-            self._check_tls_file(self._config_attrs)
+            self._check_sasl_hostname()
+            self._check_tls_file()
 
         syncrepl_topology = {}
         try:
@@ -980,7 +993,7 @@ class SlapdCheck(CheckMkLocalCheck):
                 ),
             )
 
-        self._check_slapd_start(self._config_attrs)
+        self._check_slapd_start()
         self._check_conns()
         self._check_threads()
         self._check_slapd_sock()

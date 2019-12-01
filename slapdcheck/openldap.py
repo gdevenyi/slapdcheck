@@ -22,19 +22,6 @@ from .cnf import (
 )
 
 
-def slapd_pid_fromfile(config_attrs):
-    """
-    read slapd's PID from file
-    """
-    pid_filename = config_attrs['olcPidFile'][0]
-    try:
-        with open(pid_filename, 'r', encoding='utf-8') as pid_file:
-            slapd_pid = pid_file.read().strip()
-    except IOError:
-        slapd_pid = None
-    return slapd_pid # end of slapd_pid_fromfile()
-
-
 class OpenLDAPMonitorCache:
     """
     Cache object for data read from back-monitor
