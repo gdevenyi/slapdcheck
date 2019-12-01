@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-slapd.checkmk - local check for check_mk
+slapdcheck.checkmk - local check for check_mk
 """
 
 #-----------------------------------------------------------------------
