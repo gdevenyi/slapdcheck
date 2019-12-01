@@ -111,8 +111,11 @@ class MonitoringCheck:
                 s_list.append(char)
         return ''.join(s_list)  # _subst_item_name_chars()
 
-    @staticmethod
-    def serialize_perf_data(performance_data):
+    def serialize_perf_data(self, performance_data):
+        """
+        return str representation of :performance_data: specific
+        for a certain monitoring system
+        """
         return str(performance_data)
 
     def result(self, status, item_name, performance_data=None, check_output=None):
