@@ -43,7 +43,32 @@ from ldap0.ldif import LDIFParser
 from slapdcheck import MonitoringCheck
 from slapdcheck.openldap import SyncreplProviderTask
 from slapdcheck.openldap import OpenLDAPMonitorCache, SlapdConnection, slapd_pid_fromfile
-from slapdcheck.cnf import *
+from slapdcheck.cnf import (
+    CATCH_ALL_EXC,
+    CERT_ERROR_DAYS,
+    CERT_WARN_DAYS,
+    CHECK_RESULT_ERROR,
+    CHECK_RESULT_NOOP_SRCH_UNAVAILABLE,
+    CHECK_RESULT_OK,
+    CHECK_RESULT_UNKNOWN,
+    CHECK_RESULT_WARNING,
+    CONNECTIONS_WARN_LOWER,
+    CONNECTIONS_WARN_PERCENTAGE,
+    LDAP_TIMEOUT,
+    MINIMUM_ENTRY_COUNT,
+    NOOP_SEARCH_TIMEOUT,
+    OPS_WAITING_CRIT,
+    OPS_WAITING_WARN,
+    SLAPD_SOCK_TIMEOUT,
+    SYNCREPL_HYSTERESIS_CRIT,
+    SYNCREPL_HYSTERESIS_WARN,
+    SYNCREPL_PROVIDER_ERROR_PERCENTAGE,
+    SYNCREPL_TIMEDELTA_CRIT,
+    SYNCREPL_TIMEDELTA_WARN,
+    THREADS_ACTIVE_WARN_LOWER,
+    THREADS_ACTIVE_WARN_UPPER,
+    THREADS_PENDING_WARN,
+)
 
 #-----------------------------------------------------------------------
 # Classes
@@ -634,7 +659,7 @@ class SlapdCheck(CheckMkLocalCheck):
             )
         # end of _get_slapd_perfstats()
 
-    def _check_mdb_size(self, db_num, db_suffix, db_type, db_dir):
+    def _check_mdb_size(self, db_num, db_suffix, db_dir):
         """
         Checks free MDB pages
 
@@ -700,7 +725,7 @@ class SlapdCheck(CheckMkLocalCheck):
         for db_num, db_suffix, db_type, db_dir in db_suffixes:
             # Check file sizes of MDB database files
             if db_type == 'mdb':
-                self._check_mdb_size(db_num, db_suffix, db_type, db_dir)
+                self._check_mdb_size(db_num, db_suffix, db_dir)
 
             # Count LDAP entries with no-op search controls
             item_name = '_'.join((
