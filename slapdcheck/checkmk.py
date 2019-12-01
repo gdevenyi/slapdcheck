@@ -635,14 +635,12 @@ class SlapdCheck(CheckMkLocalCheck):
         # end of _get_slapd_perfstats()
 
     def _check_mdb_size(self, db_num, db_suffix, db_type, db_dir):
-        if db_type != 'mdb':
-            return
-        item_name = '_'.join((
-            'SlapdMDBSize',
-            str(db_num),
-            self.subst_item_name_chars(db_suffix),
-        ))
-        self.add_item(item_name)
+        """
+        Checks free MDB pages
+
+        If ITS#7770 is not available (prior to OpenLDAP 2.4.48) then
+        this does nothing.
+        """
         try:
             mdb_pages_max = self._monitor_cache.get_value(
                 'cn=Database %d,cn=Databases' % (db_num),
@@ -653,56 +651,29 @@ class SlapdCheck(CheckMkLocalCheck):
                 'olmMDBPagesUsed',
             )
         except KeyError:
-            # ITS#7770 not available (prior to OpenLDAP 2.4.48)
-            # => fall back to naive file stat method
-            mdb_filename = os.path.join(db_dir, 'data.mdb')
-            try:
-                mdb_max_size = os.stat(mdb_filename).st_size
-                mdb_real_size = os.stat(mdb_filename).st_blocks * 512
-            except OSError as exc:
-                self.result(
-                    CHECK_RESULT_ERROR,
-                    item_name,
-                    check_output='OS error stating %r: %s' % (
-                        mdb_filename,
-                        exc,
-                    ),
-                )
-            else:
-                mdb_use_percentage = 100 * \
-                    float(mdb_real_size) / float(mdb_max_size)
-                self.result(
-                    CHECK_RESULT_OK,
-                    item_name,
-                    check_output='DB file %r has %d of max. %d bytes (%0.1f %%)' % (
-                        mdb_filename,
-                        mdb_real_size,
-                        mdb_max_size,
-                        mdb_use_percentage,
-                    ),
-                    performance_data=dict(
-                        mdb_pages_used=mdb_real_size/4096,
-                        mdb_pages_max=mdb_max_size/4096,
-                        mdb_use_percentage=mdb_use_percentage,
-                    ),
-                )
-        else:
-            mdb_use_percentage = 100 * float(mdb_pages_used) / float(mdb_pages_max)
-            self.result(
-                CHECK_RESULT_OK,
-                item_name,
-                check_output='LMDB in %r uses %d of max. %d pages (%0.1f %%)' % (
-                    db_dir,
-                    mdb_pages_used,
-                    mdb_pages_max,
-                    mdb_use_percentage,
-                ),
-                performance_data=dict(
-                    mdb_pages_used=mdb_pages_used,
-                    mdb_pages_max=mdb_pages_max,
-                    mdb_use_percentage=mdb_use_percentage,
-                ),
-            )
+            return
+        item_name = '_'.join((
+            'SlapdMDBSize',
+            str(db_num),
+            self.subst_item_name_chars(db_suffix),
+        ))
+        self.add_item(item_name)
+        mdb_use_percentage = 100 * float(mdb_pages_used) / float(mdb_pages_max)
+        self.result(
+            CHECK_RESULT_OK,
+            item_name,
+            check_output='LMDB in %r uses %d of max. %d pages (%0.1f %%)' % (
+                db_dir,
+                mdb_pages_used,
+                mdb_pages_max,
+                mdb_use_percentage,
+            ),
+            performance_data=dict(
+                mdb_pages_used=mdb_pages_used,
+                mdb_pages_max=mdb_pages_max,
+                mdb_use_percentage=mdb_use_percentage,
+            ),
+        )
         # end of _check_mdb_size()
 
     def _check_databases(self):
@@ -728,7 +699,8 @@ class SlapdCheck(CheckMkLocalCheck):
         )
         for db_num, db_suffix, db_type, db_dir in db_suffixes:
             # Check file sizes of MDB database files
-            self._check_mdb_size(db_num, db_suffix, db_type, db_dir)
+            if db_type == 'mdb':
+                self._check_mdb_size(db_num, db_suffix, db_type, db_dir)
 
             # Count LDAP entries with no-op search controls
             item_name = '_'.join((
