@@ -8,8 +8,8 @@ Requirements
 
   * Python 3.6+ has to be installed
   * Needs module [ldap0](https://pypi.org/project/ldap0/)
-  * Config backend has to be configured and readable.
-  * Monitoring backend has to be configured and readable.
+  * Config backend (aka cn=config) has to be configured and readable.
+  * Monitoring backend (aka cn=monitor) has to be configured and readable.
 
 See also:
 
