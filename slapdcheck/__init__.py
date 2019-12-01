@@ -5,6 +5,7 @@ slapdcheck - module package which implements OpenLDAP monitor checks
 
 import sys
 import socket
+import string
 import pprint
 import logging
 import os.path
@@ -64,10 +65,9 @@ class MonitoringCheck:
     """
     base class for a monitoring check
     """
-
-    item_names = None
+    item_names = (())
     output_encoding = 'ascii'
-    item_name_special_chars = set()
+    item_name_safe_chars = set(string.ascii_letters+string.digits+'_')
 
     def __init__(self, output_file, state_filename=None):
         """
@@ -78,7 +78,7 @@ class MonitoringCheck:
             'ascii' is always safe, Nagios mandates 'utf-8'
         """
         self._item_dict = {}
-        for item_name in self.item_names or []:
+        for item_name in self.item_names:
             self.add_item(item_name)
         self._output_file = output_file
         if state_filename is not None:
@@ -115,7 +115,9 @@ class MonitoringCheck:
         """
         try:
             try:
+                start_time = time.time()
                 self.checks()
+                end_time = time.time()
             except Exception:
                 # Log unhandled exception
                 err_lines = [66 * '-']
@@ -147,7 +149,7 @@ class MonitoringCheck:
         """
         s_list = []
         for char in item_name:
-            if char in self.item_name_special_chars:
+            if char not in self.item_name_safe_chars:
                 s_list.append('_')
             else:
                 s_list.append(char)

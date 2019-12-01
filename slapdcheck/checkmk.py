@@ -52,7 +52,6 @@ class CheckMkLocalCheck(MonitoringCheck):
         CHECK_RESULT_UNKNOWN: 'UNKNOWN',
     }
     output_format = '{status_code} {name} {perf_data} {status_text} - {msg}\n'
-    item_name_special_chars = set(',!:$%=/\\')
 
     def serialize_perf_data(self, pdat):
         if not pdat:
