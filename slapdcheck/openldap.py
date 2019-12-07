@@ -287,6 +287,7 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
             timeout = LDAP_TIMEOUT
         self.set_option(ldap0.OPT_NETWORK_TIMEOUT, network_timeout)
         self.set_option(ldap0.OPT_TIMEOUT, timeout)
+        tls_options = tls_options or {}
         self.set_tls_options(**tls_options)
         conect_start = time.time()
         # Send SASL/EXTERNAL bind which opens connection
