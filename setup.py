@@ -34,7 +34,7 @@ setup(
     data_files=[],
     install_requires=[
         'setuptools',
-        'ldap0>=0.6.0',
+        'ldap0>=0.6.4',
         'cryptography',
     ],
     zip_safe=False,
