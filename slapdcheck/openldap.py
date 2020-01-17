@@ -91,14 +91,10 @@ class OpenLDAPObject:
     ]
     all_real_db_filter = (
         '(&'
-          '(|'
-            '(objectClass=olcBdbConfig)'
-            '(objectClass=olcHdbConfig)'
-            '(objectClass=olcMdbConfig)'
-          ')'
-            '(olcDatabase=*)'
-            '(olcDbDirectory=*)'
-            '(olcSuffix=*)'
+          '(objectClass=olcMdbConfig)'
+          '(olcDatabase=*)'
+          '(olcDbDirectory=*)'
+          '(olcSuffix=*)'
         ')'
     )
     all_monitor_entries_filter = (
