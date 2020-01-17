@@ -36,6 +36,7 @@ setup(
         'setuptools',
         'ldap0>=0.6.4',
         'cryptography',
+        'lmdb>=0.98',
     ],
     zip_safe=False,
     entry_points={

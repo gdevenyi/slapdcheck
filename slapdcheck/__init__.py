@@ -12,6 +12,8 @@ import os.path
 import time
 import datetime
 
+import lmdb
+
 import cryptography.x509
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 import cryptography.hazmat.primitives.asymmetric.rsa
@@ -760,6 +762,33 @@ class SlapdCheck(MonitoringCheck):
             )
         # end of _get_slapd_perfstats()
 
+    def _check_mdb_entry_count(self, db_num, db_suffix, db_dir):
+        """
+        returns number of entries in id2e sub-DB of MDB env in :db_dir:
+        """
+        mdb_env = lmdb.open(db_dir, max_dbs=2)
+        with mdb_env.begin() as mdb_txn:
+            mdb_id2e_subdb = mdb_env.open_db(b'id2e', txn=mdb_txn, create=False)
+            mdb_id2e_stat = mdb_txn.stat(mdb_id2e_subdb)
+        item_name = '_'.join((
+            'SlapdEntryCount',
+            str(db_num),
+            self.subst_item_name_chars(db_suffix),
+        ))
+        self.add_item(item_name)
+        self.result(
+            CHECK_RESULT_WARNING*(mdb_id2e_stat['entries'] < MINIMUM_ENTRY_COUNT),
+            item_name,
+            performance_data={
+                'count': mdb_id2e_stat['entries'],
+            },
+            check_output='%r has %d entries' % (
+                db_suffix,
+                mdb_id2e_stat['entries'],
+            )
+        )
+        # end of _check_mdb_entry_count()
+
     def _check_mdb_size(self, db_num, db_suffix, db_dir):
         """
         Checks free MDB pages
@@ -827,99 +856,7 @@ class SlapdCheck(MonitoringCheck):
             # Check file sizes of MDB database files
             if db_type == 'mdb':
                 self._check_mdb_size(db_num, db_suffix, db_dir)
-
-            # Count LDAP entries with no-op search controls
-            item_name = '_'.join((
-                'SlapdEntryCount',
-                str(db_num),
-                self.subst_item_name_chars(db_suffix),
-            ))
-            self.add_item(item_name)
-            try:
-                noop_start_timestamp = time.time()
-                noop_result = self._ldapi_conn.noop_search(
-                    db_suffix,
-                    timeout=NOOP_SEARCH_TIMEOUT,
-                )
-            except ldap0.TIMEOUT:
-                self.result(
-                    CHECK_RESULT_WARNING,
-                    item_name,
-                    check_output='Request timeout %0.1f s reached while retrieving entry count for %r.' % (
-                        LDAP_TIMEOUT,
-                        db_suffix,
-                    )
-                )
-            except ldap0.TIMELIMIT_EXCEEDED:
-                self.result(
-                    CHECK_RESULT_WARNING,
-                    item_name,
-                    check_output='Search time limit %0.1f s exceeded while retrieving entry count for %r.' % (
-                        NOOP_SEARCH_TIMEOUT,
-                        db_suffix,
-                    )
-                )
-            except ldap0.UNAVAILABLE_CRITICAL_EXTENSION:
-                self.result(
-                    CHECK_RESULT_NOOP_SRCH_UNAVAILABLE,
-                    item_name,
-                    check_output='no-op search control not supported'
-                )
-            except CATCH_ALL_EXC as exc:
-                self.result(
-                    CHECK_RESULT_ERROR,
-                    item_name,
-                    check_output='Error retrieving entry count for %r: %s' % (db_suffix, exc)
-                )
-            else:
-                noop_response_time = time.time() - noop_start_timestamp
-                if noop_result is None:
-                    self.result(
-                        CHECK_RESULT_WARNING,
-                        item_name,
-                        check_output='Could not retrieve entry count (result was None)',
-                    )
-                else:
-                    num_all_search_results, num_all_search_continuations = noop_result
-                    if num_all_search_continuations:
-                        self.result(
-                            CHECK_RESULT_ERROR,
-                            item_name,
-                            performance_data={
-                                'count': num_all_search_results,
-                            },
-                            check_output='%r has %d referrals! (response time %0.1f s)' % (
-                                db_suffix,
-                                num_all_search_continuations,
-                                noop_response_time,
-                            )
-                        )
-                    elif num_all_search_results < MINIMUM_ENTRY_COUNT:
-                        self.result(
-                            CHECK_RESULT_WARNING,
-                            item_name,
-                            performance_data={
-                                'count': num_all_search_results,
-                            },
-                            check_output='%r only has %d entries (response time %0.1f s)' % (
-                                db_suffix,
-                                num_all_search_results,
-                                noop_response_time,
-                            )
-                        )
-                    else:
-                        self.result(
-                            CHECK_RESULT_OK,
-                            item_name,
-                            performance_data={
-                                'count': num_all_search_results,
-                            },
-                            check_output='%r has %d entries (response time %0.1f s)' % (
-                                db_suffix,
-                                num_all_search_results,
-                                noop_response_time,
-                            )
-                        )
+                self._check_mdb_entry_count(db_num, db_suffix, db_dir)
         # end of _check_databases()
 
     def _check_providers(self, syncrepl_topology):
