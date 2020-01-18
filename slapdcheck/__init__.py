@@ -766,10 +766,19 @@ class SlapdCheck(MonitoringCheck):
         """
         returns number of entries in id2e sub-DB of MDB env in :db_dir:
         """
-        mdb_env = lmdb.open(db_dir, max_dbs=2)
-        with mdb_env.begin() as mdb_txn:
-            mdb_id2e_subdb = mdb_env.open_db(b'id2e', txn=mdb_txn, create=False)
-            mdb_id2e_stat = mdb_txn.stat(mdb_id2e_subdb)
+        try:
+            mdb_entry_count = self._monitor_cache.get_value(
+                'cn=Database %d,cn=Databases' % (db_num),
+                'olmMDBEntries',
+            )
+            mdb_entries_source = 'olmMDBEntries'
+        except KeyError:
+            mdb_env = lmdb.open(db_dir, max_dbs=2)
+            with mdb_env.begin() as mdb_txn:
+                mdb_id2e_subdb = mdb_env.open_db(b'id2e', txn=mdb_txn, create=False)
+                mdb_id2e_stat = mdb_txn.stat(mdb_id2e_subdb)
+            mdb_entry_count = mdb_id2e_stat['entries']
+            mdb_entries_source = 'mdb_env'
         item_name = '_'.join((
             'SlapdEntryCount',
             str(db_num),
@@ -777,14 +786,15 @@ class SlapdCheck(MonitoringCheck):
         ))
         self.add_item(item_name)
         self.result(
-            CHECK_RESULT_WARNING*(mdb_id2e_stat['entries'] < MINIMUM_ENTRY_COUNT),
+            CHECK_RESULT_WARNING*(mdb_entry_count < MINIMUM_ENTRY_COUNT),
             item_name,
             performance_data={
-                'count': mdb_id2e_stat['entries'],
+                'count': mdb_entry_count,
             },
-            check_output='%r has %d entries' % (
+            check_output='%r has %d entries (%s)' % (
                 db_suffix,
-                mdb_id2e_stat['entries'],
+                mdb_entry_count,
+                mdb_entries_source,
             )
         )
         # end of _check_mdb_entry_count()
