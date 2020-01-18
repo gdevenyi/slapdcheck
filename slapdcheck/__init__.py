@@ -824,8 +824,14 @@ class SlapdCheck(MonitoringCheck):
         ))
         self.add_item(item_name)
         mdb_use_percentage = 100 * float(mdb_pages_used) / float(mdb_pages_max)
+        if mdb_use_percentage <= 70.0:
+            check_result = CHECK_RESULT_OK
+        elif mdb_use_percentage <= 90.0:
+            check_result = CHECK_RESULT_WARNING
+        else:
+            check_result = CHECK_RESULT_ERROR
         self.result(
-            CHECK_RESULT_OK,
+            check_result,
             item_name,
             check_output='LMDB in %r uses %d of max. %d pages (%0.1f %%)' % (
                 db_dir,
