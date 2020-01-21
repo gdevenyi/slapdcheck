@@ -12,7 +12,10 @@ import os.path
 import time
 import datetime
 
-import lmdb
+try:
+    import lmdb
+except ImportError:
+    lmdb = None
 
 import cryptography.x509
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
@@ -773,6 +776,9 @@ class SlapdCheck(MonitoringCheck):
             )
             mdb_entries_source = 'olmMDBEntries'
         except KeyError:
+            if lmdb is None:
+                # fall-back to directly access .mdb files not possible
+                return
             mdb_env = lmdb.open(db_dir, max_dbs=2)
             with mdb_env.begin() as mdb_txn:
                 mdb_id2e_subdb = mdb_env.open_db(b'id2e', txn=mdb_txn, create=False)
