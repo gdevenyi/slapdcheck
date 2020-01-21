@@ -252,11 +252,6 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
     """
     LDAPObject derivation especially for accesing OpenLDAP's slapd
     """
-    tls_fileoptions = set((
-        ldap0.OPT_X_TLS_CACERTFILE,
-        ldap0.OPT_X_TLS_CERTFILE,
-        ldap0.OPT_X_TLS_KEYFILE,
-    ))
 
     def __init__(
             self,
