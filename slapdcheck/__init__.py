@@ -656,6 +656,10 @@ class SlapdCheck(MonitoringCheck):
             'cn=Pending,cn=Threads',
             'monitoredInfo',
         )
+        threads_max = self._monitor_cache.get_value(
+            'cn=Max,cn=Threads',
+            'monitoredInfo',
+        )
         state = int(
             threads_active < THREADS_ACTIVE_WARN_LOWER or
             threads_active > THREADS_ACTIVE_WARN_UPPER or
@@ -667,6 +671,7 @@ class SlapdCheck(MonitoringCheck):
             'Thread counts active:%d pending: %d' % (threads_active, threads_pending),
             threads_active=threads_active,
             threads_pending=threads_pending,
+            threads_max=threads_max,
         )
         # end of _check_threads()
 
