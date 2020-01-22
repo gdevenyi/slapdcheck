@@ -23,9 +23,9 @@ from slapdcheck.cnf import (
 # Classes
 #-----------------------------------------------------------------------
 
-class CheckMkLocalCheck(MonitoringCheck):
+class CheckMkSlapdCheck(SlapdCheck, MonitoringCheck):
     """
-    Simple class for writing check_mk output
+    slapd check for checkmk
     """
     checkmk_status = {
         CHECK_RESULT_OK: 'OK',
@@ -34,6 +34,9 @@ class CheckMkLocalCheck(MonitoringCheck):
         CHECK_RESULT_UNKNOWN: 'UNKNOWN',
     }
     output_format = '{status_code} {name} {perf_data} {status_text} - {msg}\n'
+
+    def __init__(self, output_file, state_filename=None):
+        SlapdCheck.__init__(self, output_file, state_filename)
 
     def serialize_perf_data(self, pdat):
         if not pdat:
@@ -60,15 +63,6 @@ class CheckMkLocalCheck(MonitoringCheck):
                 )
             )
         # end of output()
-
-
-class CheckMkSlapdCheck(SlapdCheck, CheckMkLocalCheck):
-    """
-    slapd check for checkmk
-    """
-
-    def __init__(self, output_file, state_filename=None):
-        SlapdCheck.__init__(self, output_file, state_filename)
 
 
 def run():
