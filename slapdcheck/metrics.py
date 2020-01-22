@@ -54,6 +54,8 @@ class OpenMetricsCheck(SlapdCheck, MonitoringCheck):
             status, check_name, perf_data, _ = self._item_dict[i]
             if perf_data:
                 for k, v in perf_data.items():
+                    if k.endswith('_rate'):
+                        continue
                     check_mk_performance.labels(name=check_name, metric_name=k).set(v)
 
             check_mk_status.labels(name=check_name, status=self.checkmk_status[status]).set(1)
