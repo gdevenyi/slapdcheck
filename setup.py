@@ -39,11 +39,13 @@ setup(
     ],
     extras_require = {
         'lmdb':  ['lmdb>=0.98'],
+        'metrics':  ['prometheus_client>=0.7.1'],
     },
     zip_safe=False,
     entry_points={
         'console_scripts': [
             'slapd_checkmk = slapdcheck.checkmk:run',
+            'slapd_metrics = slapdcheck.metrics:run',
         ],
     },
 )
