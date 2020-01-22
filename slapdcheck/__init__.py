@@ -13,6 +13,8 @@ import os.path
 import time
 import datetime
 
+import psutil
+
 try:
     import lmdb
 except ImportError:
@@ -170,7 +172,7 @@ class MonitoringCheck:
         """
         return str(performance_data)
 
-    def result(self, status, item_name, performance_data=None, check_output=None):
+    def result(self, status, item_name, check_output, **performance_data):
         """
         Registers check_mk result to be output later
         status
@@ -178,8 +180,6 @@ class MonitoringCheck:
         item_name
            the check_mk item name
         """
-        assert performance_data is None or isinstance(performance_data, dict), \
-            TypeError('Expected performance_data to be None or dict, but was %r' % performance_data)
         # Provoke KeyError if item_name is not known
         try:
             self._item_dict[item_name]
@@ -191,7 +191,7 @@ class MonitoringCheck:
         self._item_dict[item_name] = (
             status,
             item_name,
-            performance_data or {},
+            performance_data,
             check_output or u'',
         )
         # end of result()
@@ -207,7 +207,7 @@ class MonitoringCheck:
                 self.result(
                     CHECK_RESULT_UNKNOWN,
                     i,
-                    check_output='No defined check result yet!',
+                    'No defined check result yet!',
                 )
 
 
@@ -224,6 +224,7 @@ class SlapdCheck(MonitoringCheck):
         'SlapdStart',
         'SlapdOps',
         'SlapdProviders',
+        'SlapdProc',
         'SlapdReplTopology',
         'SlapdSASLHostname',
         'SlapdSelfConn',
@@ -237,6 +238,7 @@ class SlapdCheck(MonitoringCheck):
         self._ldapi_conn = None
         self._config_attrs = {}
         self._monitor_cache = {}
+        self._proc_info = {}
 
     def _check_sasl_hostname(self):
         """
@@ -248,7 +250,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdSASLHostname',
-                check_output='olcSaslHost not set'
+                'olcSaslHost not set'
             )
         else:
             try:
@@ -257,13 +259,13 @@ class SlapdCheck(MonitoringCheck):
                 self.result(
                     CHECK_RESULT_WARNING,
                     'SlapdSASLHostname',
-                    check_output='olcSaslHost %r not found: %r' % (olc_sasl_host, socket_err),
+                    'olcSaslHost %r not found: %r' % (olc_sasl_host, socket_err),
                 )
             else:
                 self.result(
                     CHECK_RESULT_OK,
                     'SlapdSASLHostname',
-                    check_output='olcSaslHost %r found' % (olc_sasl_host),
+                    'olcSaslHost %r found' % (olc_sasl_host),
                 )
         # end of _check_sasl_hostname()
 
@@ -294,7 +296,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdCert',
-                check_output=' / '.join(file_read_errors)
+                ' / '.join(file_read_errors)
             )
             return
         server_cert_obj = cryptography.x509.load_pem_x509_certificate(
@@ -323,7 +325,7 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             cert_check_result,
             'SlapdCert',
-            check_output=(
+            (
                 'Server cert %r valid until %s UTC '
                 '(%d days left, %0.1f %% elapsed), '
                 'modulus_match==%r'
@@ -361,7 +363,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdSelfConn',
-                check_output='Error connecting to %r: %s / client_tls_options = %r' % (
+                'Error connecting to %r: %s / client_tls_options = %r' % (
                     ldaps_uri,
                     exc,
                     client_tls_options,
@@ -376,7 +378,7 @@ class SlapdCheck(MonitoringCheck):
                 self.result(
                     CHECK_RESULT_ERROR,
                     'SlapdSelfConn',
-                    check_output='Error during Who Am I? ext.op. on %r: %s' % (
+                    'Error during Who Am I? ext.op. on %r: %s' % (
                         ldaps_conn.uri,
                         exc,
                     ),
@@ -386,21 +388,21 @@ class SlapdCheck(MonitoringCheck):
                     self.result(
                         CHECK_RESULT_ERROR,
                         'SlapdSelfConn',
-                        performance_data={'connect_latency': ldaps_conn.connect_latency},
-                        check_output='Received unexpected authz-DN from %r: %r' % (
+                        'Received unexpected authz-DN from %r: %r' % (
                             ldaps_conn.uri,
                             wai,
                         ),
+                        connect_latency=ldaps_conn.connect_latency,
                     )
                 else:
                     self.result(
                         CHECK_RESULT_OK,
                         'SlapdSelfConn',
-                        performance_data={'connect_latency': ldaps_conn.connect_latency},
-                        check_output='successfully bound to %r as %r' % (
+                        'successfully bound to %r as %r' % (
                             ldaps_conn.uri,
                             wai,
                         ),
+                        connect_latency=ldaps_conn.connect_latency,
                     )
             ldaps_conn.unbind_s()
         # end of _check_local_ldaps()
@@ -445,13 +447,13 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdSock',
-                check_output='error retrieving back-sock listeners: %s' % (exc)
+                'error retrieving back-sock listeners: %s' % (exc)
             )
         else:
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdSock',
-                check_output='Found %d back-sock listeners' % (len(sock_listeners))
+                'Found %d back-sock listeners' % (len(sock_listeners))
             )
             for item_name, sock_listener in sock_listeners.items():
                 self.add_item(item_name)
@@ -462,7 +464,7 @@ class SlapdCheck(MonitoringCheck):
                     self.result(
                         CHECK_RESULT_ERROR,
                         item_name,
-                        check_output='Connecting to %s listener %r failed: %s' % (
+                        'Connecting to %s listener %r failed: %s' % (
                             sock_ops, sock_path, exc,
                         ),
                     )
@@ -483,8 +485,8 @@ class SlapdCheck(MonitoringCheck):
                     self.result(
                         check_result,
                         item_name,
+                        ', '.join(check_msgs),
                         performance_data=sock_perf_data,
-                        check_output=', '.join(check_msgs),
                     )
         # end of _check_slapd_sock()
 
@@ -495,11 +497,26 @@ class SlapdCheck(MonitoringCheck):
         pid_filename = self._config_attrs['olcPidFile'][0]
         try:
             with open(pid_filename, 'r', encoding='utf-8') as pid_file:
-                slapd_pid = pid_file.read().strip()
+                slapd_pid = int(pid_file.read().strip())
         except IOError:
             slapd_pid = None
         return slapd_pid
         # end of _read_pid()
+
+    def _get_proc_info(self):
+        self._proc_info = psutil.Process(self._read_pid()).as_dict()
+        pmem = self._proc_info['memory_info']
+        self.result(
+            CHECK_RESULT_OK,
+            'SlapdProc',
+            '%d process information items' % (len(self._proc_info),),
+            pmem_rss=pmem.rss,
+            pmem_vms=pmem.vms,
+            pmem_shared=pmem.shared,
+            pmem_text=pmem.text,
+            pmem_lib=pmem.lib,
+            pmem_dirty=pmem.dirty,
+        )
 
     def _check_slapd_start(self):
         """
@@ -530,7 +547,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_WARNING,
                 'SlapdStart',
-                check_output='slapd[%s] needs restart! Started at %s, %s ago, now newer config: %s' % (
+                'slapd[%d] needs restart! Started at %s, %s ago, now newer config: %s' % (
                     self._read_pid(),
                     start_time,
                     utc_now-start_time,
@@ -541,7 +558,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdStart',
-                check_output='slapd[%s] started at %s, %s ago' % (
+                'slapd[%s] started at %s, %s ago' % (
                     self._read_pid(),
                     start_time,
                     utc_now-start_time,
@@ -565,7 +582,7 @@ class SlapdCheck(MonitoringCheck):
                 self.result(
                     CHECK_RESULT_ERROR,
                     item_name,
-                    check_output='Error while retrieving local contextCSN of %r: %s' % (
+                    'Error while retrieving local contextCSN of %r: %s' % (
                         db_suffix,
                         exc,
                     ),
@@ -575,7 +592,7 @@ class SlapdCheck(MonitoringCheck):
                     self.result(
                         CHECK_RESULT_UNKNOWN,
                         item_name,
-                        check_output='no local contextCSN values for %r' % (
+                        'no local contextCSN values for %r' % (
                             db_suffix,
                         ),
                     )
@@ -593,7 +610,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdConfig',
-                check_output='Error while connecting to %r: %s' % (
+                'Error while connecting to %r: %s' % (
                     local_ldapi_url,
                     exc,
                 )
@@ -621,11 +638,9 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             state,
             'SlapdConns',
-            performance_data={
-                'count': current_connections,
-                'percent': current_connections_percentage,
-            },
-            check_output='%d open connections (max. %d)' % (current_connections, max_connections),
+            '%d open connections (max. %d)' % (current_connections, max_connections),
+            count=current_connections,
+            percent=current_connections_percentage,
         )
         # end of _check_conns()
 
@@ -649,12 +664,9 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             state,
             'SlapdThreads',
-            performance_data={
-                'threads_active': threads_active,
-                'threads_pending': threads_pending,
-            },
-            check_output='Thread counts active:%d pending: %d' % (
-                threads_active, threads_pending)
+            'Thread counts active:%d pending: %d' % (threads_active, threads_pending),
+            threads_active=threads_active,
+            threads_pending=threads_pending,
         )
         # end of _check_threads()
 
@@ -691,13 +703,7 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             CHECK_RESULT_OK,
             'SlapdStats',
-            performance_data={
-                'bytes': stats_bytes_rate,
-                'entries': stats_entries_rate,
-                'pdu': stats_pdu_rate,
-                'referrals': stats_referrals_rate,
-            },
-            check_output='Stats: %d bytes (%0.1f bytes/sec) / %d entries (%0.1f entries/sec) / %d PDUs (%0.1f PDUs/sec) / %d referrals (%0.1f referrals/sec)' % (
+            'Stats: %d bytes (%0.1f bytes/sec) / %d entries (%0.1f entries/sec) / %d PDUs (%0.1f PDUs/sec) / %d referrals (%0.1f referrals/sec)' % (
                 stats_bytes,
                 stats_bytes_rate,
                 stats_entries,
@@ -706,7 +712,11 @@ class SlapdCheck(MonitoringCheck):
                 stats_pdu_rate,
                 stats_referrals,
                 stats_referrals_rate,
-            )
+            ),
+            stats_bytes=stats_bytes_rate,
+            stats_entries=stats_entries_rate,
+            stats_pdu=stats_pdu_rate,
+            stats_referrals=stats_referrals_rate,
         )
         monitor_ops_counters = self._monitor_cache.operation_counters()
         if monitor_ops_counters:
@@ -727,18 +737,16 @@ class SlapdCheck(MonitoringCheck):
                 self.result(
                     CHECK_RESULT_OK,
                     item_name,
-                    performance_data={
-                        'ops_completed_rate': ops_completed_rate,
-                        'ops_initiated_rate': ops_initiated_rate,
-                        'ops_waiting': ops_waiting,
-                    },
-                    check_output='completed %d of %d operations (%0.2f/s completed, %0.2f/s initiated, %d waiting)' % (
+                    'completed %d of %d operations (%0.2f/s completed, %0.2f/s initiated, %d waiting)' % (
                         ops_completed,
                         ops_initiated,
                         ops_completed_rate,
                         ops_initiated_rate,
                         ops_waiting,
                     ),
+                    ops_completed_rate=ops_completed_rate,
+                    ops_initiated_rate=ops_initiated_rate,
+                    ops_waiting=ops_waiting,
                 )
             ops_all_initiated_rate = self._get_rate('ops_all_initiated', ops_all_initiated, last_time_span)
             ops_all_completed_rate = self._get_rate('ops_all_completed', ops_all_completed, last_time_span)
@@ -752,12 +760,7 @@ class SlapdCheck(MonitoringCheck):
                 state = CHECK_RESULT_OK
             self.result(
                 state, 'SlapdOps',
-                performance_data={
-                    'ops_completed_rate': ops_all_completed_rate,
-                    'ops_initiated_rate': ops_all_initiated_rate,
-                    'ops_waiting': ops_all_waiting,
-                },
-                check_output='%d operation types / completed %d of %d operations (%0.2f/s completed, %0.2f/s initiated, %d waiting)' % (
+                '%d operation types / completed %d of %d operations (%0.2f/s completed, %0.2f/s initiated, %d waiting)' % (
                     len(monitor_ops_counters),
                     ops_all_completed,
                     ops_all_initiated,
@@ -765,6 +768,9 @@ class SlapdCheck(MonitoringCheck):
                     ops_all_initiated_rate,
                     ops_all_waiting,
                 ),
+                ops_completed_rate=ops_all_completed_rate,
+                ops_initiated_rate=ops_all_initiated_rate,
+                ops_waiting=ops_all_waiting,
             )
         # end of _get_slapd_perfstats()
 
@@ -797,14 +803,12 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             CHECK_RESULT_WARNING*(mdb_entry_count < MINIMUM_ENTRY_COUNT),
             item_name,
-            performance_data={
-                'count': mdb_entry_count,
-            },
-            check_output='%r has %d entries (%s)' % (
+            '%r has %d entries (%s)' % (
                 db_suffix,
                 mdb_entry_count,
                 mdb_entries_source,
-            )
+            ),
+            mdb_entry_count=mdb_entry_count,
         )
         # end of _check_mdb_entry_count()
 
@@ -842,17 +846,15 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             check_result,
             item_name,
-            check_output='LMDB in %r uses %d of max. %d pages (%0.1f %%)' % (
+            'LMDB in %r uses %d of max. %d pages (%0.1f %%)' % (
                 db_dir,
                 mdb_pages_used,
                 mdb_pages_max,
                 mdb_use_percentage,
             ),
-            performance_data=dict(
-                mdb_pages_used=mdb_pages_used,
-                mdb_pages_max=mdb_pages_max,
-                mdb_use_percentage=mdb_use_percentage,
-            ),
+            mdb_pages_used=mdb_pages_used,
+            mdb_pages_max=mdb_pages_max,
+            mdb_use_percentage=mdb_use_percentage,
         )
         # end of _check_mdb_size()
 
@@ -863,13 +865,13 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdDatabases',
-                check_output='error retrieving DB suffixes: %s' % (exc)
+                'error retrieving DB suffixes: %s' % (exc)
             )
             return
         self.result(
             CHECK_RESULT_OK,
             'SlapdDatabases',
-            check_output='Found %d real databases: %s' % (
+            'Found %d real databases: %s' % (
                 len(db_suffixes),
                 ' / '.join([
                     '{%d}%s: %s' % (n, t, s)
@@ -926,19 +928,17 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             check_result,
             'SlapdProviders',
-            performance_data={
-                'count': len(remote_csn_dict),
-                'total': len(syncrepl_topology),
-                'percent': slapd_provider_percentage,
-                'avg_latency': sum(task_connect_latency.values())/len(task_connect_latency) if task_connect_latency else 0.0,
-                'max_latency': max(task_connect_latency.values()) if task_connect_latency else 0.0,
-            },
-            check_output='Connected to %d of %d (%0.1f%%) providers: %s' % (
+            'Connected to %d of %d (%0.1f%%) providers: %s' % (
                 len(remote_csn_dict),
                 len(syncrepl_topology),
                 slapd_provider_percentage,
                 ' / '.join(syncrepl_target_fail_msgs),
             ),
+            count=len(remote_csn_dict),
+            total=len(syncrepl_topology),
+            percent=slapd_provider_percentage,
+            avg_latency=sum(task_connect_latency.values())/len(task_connect_latency) if task_connect_latency else 0.0,
+            max_latency=max(task_connect_latency.values()) if task_connect_latency else 0.0,
         )
         return remote_csn_dict # end of _check_providers()
 
@@ -953,7 +953,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdReplTopology',
-                check_output='Error getting syncrepl topology on %r: %s' % (
+                'Error getting syncrepl topology on %r: %s' % (
                     self._ldapi_conn.uri,
                     exc,
                 ),
@@ -962,7 +962,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdReplTopology',
-                check_output='successfully retrieved syncrepl topology with %d items: %s' % (
+                'successfully retrieved syncrepl topology with %d items: %s' % (
                     len(syncrepl_topology),
                     syncrepl_topology,
                 )
@@ -1073,14 +1073,12 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 state,
                 item_name,
-                performance_data={
-                    'max_csn_timedelta': max_csn_timedelta
-                },
-                check_output='%r max. contextCSN delta: %0.1f / %s' % (
+                '%r max. contextCSN delta: %0.1f / %s' % (
                     db_suffix,
                     max_csn_timedelta,
                     ' / '.join(issues),
                 ),
+                max_csn_timedelta=max_csn_timedelta,
             )
 
         # end of _check_provider_conns()
@@ -1117,7 +1115,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdConfig',
-                check_output='Error getting local configuration on %r: %s' % (
+                'Error getting local configuration on %r: %s' % (
                     self._ldapi_conn.uri,
                     exc,
                 ),
@@ -1126,7 +1124,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdConfig',
-                check_output='Successfully connected to %r as %r found %r and %r' % (
+                'Successfully connected to %r as %r found %r and %r' % (
                     self._ldapi_conn.uri,
                     local_wai,
                     self._ldapi_conn.configContext[0],
@@ -1148,7 +1146,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdMonitor',
-                check_output='Error getting local monitor data on %r: %s' % (
+                'Error getting local monitor data on %r: %s' % (
                     self._ldapi_conn.uri,
                     exc,
                 ),
@@ -1157,7 +1155,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdMonitor',
-                check_output='Successfully retrieved %d entries from %r on %r' % (
+                'Successfully retrieved %d entries from %r on %r' % (
                     len(self._monitor_cache),
                     self._ldapi_conn.monitorContext[0],
                     self._ldapi_conn.uri,
@@ -1165,6 +1163,7 @@ class SlapdCheck(MonitoringCheck):
             )
 
         self._check_slapd_start()
+        self._get_proc_info()
         self._check_conns()
         self._check_threads()
         self._check_slapd_sock()
