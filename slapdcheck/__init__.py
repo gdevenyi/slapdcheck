@@ -506,6 +506,7 @@ class SlapdCheck(MonitoringCheck):
     def _get_proc_info(self):
         self._proc_info = psutil.Process(self._read_pid()).as_dict()
         pmem = self._proc_info['memory_info']
+        ctx_sw = self._proc_info['num_ctx_switches']
         self.result(
             CHECK_RESULT_OK,
             'SlapdProc',
@@ -516,6 +517,8 @@ class SlapdCheck(MonitoringCheck):
             pmem_text=pmem.text,
             pmem_lib=pmem.lib,
             pmem_dirty=pmem.dirty,
+            ctx_switches_voluntary=ctx_sw.voluntary,
+            ctx_switches_involuntary=ctx_sw.involuntary,
         )
 
     def _check_slapd_start(self):
