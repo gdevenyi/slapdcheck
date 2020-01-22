@@ -36,6 +36,7 @@ setup(
         'setuptools',
         'ldap0>=0.6.4',
         'cryptography',
+        'psutil',
     ],
     extras_require = {
         'lmdb':  ['lmdb>=0.98'],
