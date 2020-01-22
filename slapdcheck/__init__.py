@@ -8,6 +8,7 @@ import socket
 import string
 import pprint
 import logging
+import os
 import os.path
 import time
 import datetime
@@ -20,6 +21,8 @@ except ImportError:
 import cryptography.x509
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 import cryptography.hazmat.primitives.asymmetric.rsa
+
+os.environ['LDAPNOINIT'] = '1'
 
 # from ldap0 package
 import ldap0

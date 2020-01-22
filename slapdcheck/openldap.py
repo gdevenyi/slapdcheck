@@ -290,6 +290,27 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
             raise ValueError('Unknown bind_method %r' % bind_method)
         self.connect_latency = time.time() - conect_start
 
+    def set_tls_options(
+            self,
+            cacert_filename=None,
+            client_cert_filename=None,
+            client_key_filename=None,
+            req_cert=ldap0.OPT_X_TLS_DEMAND,
+        ):
+        if isinstance(cacert_filename, bytes):
+            cacert_filename = cacert_filename.decode('utf-8')
+        if isinstance(client_cert_filename, bytes):
+            client_cert_filename = client_cert_filename.decode('utf-8')
+        if isinstance(client_key_filename, bytes):
+            client_key_filename = client_key_filename.decode('utf-8')
+        LDAPObject.set_tls_options(
+            self,
+            cacert_filename=cacert_filename,
+            client_cert_filename=client_cert_filename,
+            client_key_filename=client_key_filename,
+            req_cert=req_cert,
+        )
+
 
 class SyncreplProviderTask(threading.Thread):
     """
