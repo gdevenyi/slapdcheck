@@ -486,7 +486,7 @@ class SlapdCheck(MonitoringCheck):
                         check_result,
                         item_name,
                         ', '.join(check_msgs),
-                        performance_data=sock_perf_data,
+                        **sock_perf_data,
                     )
         # end of _check_slapd_sock()
 
