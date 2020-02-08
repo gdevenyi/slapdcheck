@@ -38,7 +38,6 @@ class OpenMetricsCheck(SlapdCheck, MonitoringCheck):
         CHECK_RESULT_ERROR: 'ERROR',
         CHECK_RESULT_UNKNOWN: 'UNKNOWN',
     }
-    output_format = '{status_code} {name} {perf_data} {status_text} - {msg}\n'
 
     def __init__(self, output_file, state_filename=None):
         SlapdCheck.__init__(self, output_file, state_filename)
@@ -48,17 +47,27 @@ class OpenMetricsCheck(SlapdCheck, MonitoringCheck):
         Outputs all check_mk results registered before with method result()
         """
         registry = CollectorRegistry()
-        check_mk_performance = Gauge("check_mk_performance_metrics", "slapd performance metrics", ["name", "metric_name"],registry=registry)
-        check_mk_status = Gauge("check_mk_status", "slapd status metrics", ["name", "status"],registry=registry)
+        check_mk_performance = Gauge(
+            'check_mk_performance_metrics', 'slapd performance metrics', ['name', 'metric_name'],
+            registry=registry,
+        )
+        check_mk_status = Gauge(
+            'check_mk_status',
+            'slapd status metrics',
+            ['name'],
+            registry=registry,
+        )
         for i in sorted(self._item_dict.keys()):
             status, check_name, perf_data, _ = self._item_dict[i]
             if perf_data:
                 for k, v in perf_data.items():
                     if k.endswith('_rate'):
                         continue
-                    check_mk_performance.labels(name=check_name, metric_name=k).set(v)
-
-            check_mk_status.labels(name=check_name, status=self.checkmk_status[status]).set(1)
+                    try:
+                        check_mk_performance.labels(name=check_name, metric_name=k).set(v)
+                    except ValueError:
+                        pass
+            check_mk_status.labels(name=check_name).set(status)
         sys.stdout.write(generate_latest(registry).decode('utf-8'))
         # end of output()
 
