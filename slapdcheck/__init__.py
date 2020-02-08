@@ -232,7 +232,9 @@ class SlapdCheck(MonitoringCheck):
         'SlapdSock',
         'SlapdStats',
         'SlapdThreads',
+        'SlapdVersion',
     )
+    vendor_info_prefix = 'OpenLDAP: slapd '
 
     def __init__(self, output_file, state_filename=None):
         MonitoringCheck.__init__(self, output_file, state_filename)
@@ -503,6 +505,34 @@ class SlapdCheck(MonitoringCheck):
             slapd_pid = None
         return slapd_pid
         # end of _read_pid()
+
+    def _check_version(self):
+        """
+        extract version/build-time tuple
+        """
+        vendor_info = self._monitor_cache.get_value('', 'monitoredInfo')
+        check_res = CHECK_RESULT_OK
+        if not vendor_info.startswith(self.vendor_info_prefix):
+            check_res = CHECK_RESULT_ERROR
+        try:
+            slapd_version, rest = vendor_info[len(self.vendor_info_prefix):].split(' ', 1)
+        except ValueError:
+            check_res = CHECK_RESULT_ERROR
+        if not (rest[0] == '(' and rest[-1] == ')'):
+            check_res = CHECK_RESULT_ERROR
+        else:
+            try:
+                build_time = datetime.datetime.strptime(rest[1:-1], '%b %d %Y %H:%M:%S').timestamp()
+            except ValueError:
+                build_time = 0.0
+                check_res = CHECK_RESULT_ERROR
+        self.result(
+            check_res,
+            'SlapdVersion',
+            vendor_info,
+            version=slapd_version,
+            build_time=build_time,
+        )
 
     def _get_proc_info(self):
         self._proc_info = psutil.Process(self._read_pid()).as_dict()
@@ -1178,6 +1208,7 @@ class SlapdCheck(MonitoringCheck):
                 ),
             )
 
+        self._check_version()
         self._check_slapd_start()
         self._get_proc_info()
         self._check_conns()
