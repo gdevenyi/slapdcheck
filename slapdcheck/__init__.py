@@ -923,7 +923,8 @@ class SlapdCheck(MonitoringCheck):
                     '{%d}%s: %s' % (n, t, s)
                     for n, s, t, _ in db_suffixes
                 ]),
-            )
+            ),
+            count=len(db_suffixes),
         )
         for db_num, db_suffix, db_type, db_dir in db_suffixes:
             # Check file sizes of MDB database files
