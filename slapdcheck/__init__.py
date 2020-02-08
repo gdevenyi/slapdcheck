@@ -1201,11 +1201,12 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdMonitor',
-                'Successfully retrieved %d entries from %r on %r' % (
+                'Retrieved %d entries from %r on %r' % (
                     len(self._monitor_cache),
                     self._ldapi_conn.monitorContext[0],
                     self._ldapi_conn.uri,
                 ),
+                monitor_entries=len(self._monitor_cache),
             )
 
         self._check_version()
