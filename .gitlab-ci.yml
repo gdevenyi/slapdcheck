@@ -21,7 +21,7 @@ test:tumbleweed:
   image: opensuse/tumbleweed
   before_script:
   - zypper --non-interactive dist-upgrade --no-recommends
-  - zypper --non-interactive install --no-recommends --auto-agree-with-licenses --no-recommends cyrus-sasl-digestmd5 cyrus-sasl-scram cyrus-sasl-crammd5 cyrus-sasl-plain openldap2 python3-pyasn1-modules python3-setuptools python3-setuptools-git python3-setuptools_scm gcc python3-devel openldap2-devel cyrus-sasl-devel python3-pip openldap2-back-sock openldap2-contrib openldap2-client
+  - zypper --non-interactive install --no-recommends --auto-agree-with-licenses --no-recommends cyrus-sasl-digestmd5 cyrus-sasl-scram cyrus-sasl-crammd5 cyrus-sasl-plain openldap2 python3 python3-pyasn1-modules python3-setuptools python3-setuptools-git python3-setuptools_scm gcc python3-devel openldap2-devel cyrus-sasl-devel python3-pip openldap2-back-sock openldap2-contrib openldap2-client
   - 'echo "mech_list: PLAIN DIGEST-MD5 CRAM-MD5 SCRAM-SHA-1 EXTERNAL" > /etc/sasl2/slapd.conf'
   - pip3 install coverage
 
@@ -30,7 +30,7 @@ test:leap:
   image: opensuse/leap
   before_script:
   - zypper --non-interactive update --no-recommends
-  - zypper --non-interactive install --no-recommends --auto-agree-with-licenses --no-recommends cyrus-sasl-digestmd5 cyrus-sasl-scram cyrus-sasl-crammd5 cyrus-sasl-plain openldap2 python3-pyasn1-modules python3-setuptools python3-setuptools-git python3-setuptools_scm gcc python3-devel openldap2-devel cyrus-sasl-devel python3-pip openldap2-back-sock openldap2-contrib openldap2-client
+  - zypper --non-interactive install --no-recommends --auto-agree-with-licenses --no-recommends cyrus-sasl-digestmd5 cyrus-sasl-scram cyrus-sasl-crammd5 cyrus-sasl-plain openldap2 python3 python3-pyasn1-modules python3-setuptools python3-setuptools-git python3-setuptools_scm gcc python3-devel openldap2-devel cyrus-sasl-devel python3-pip openldap2-back-sock openldap2-contrib openldap2-client
   - 'echo "mech_list: PLAIN DIGEST-MD5 CRAM-MD5 SCRAM-SHA-1 EXTERNAL" > /etc/sasl2/slapd.conf'
   - pip3 install coverage
 
