@@ -38,11 +38,18 @@ class OpenLDAPMonitorCache:
         """
         Get a single monitoring value from entry cache
         """
-        attr_value = self._data[','.join((dn_prefix, self._ctx))][attribute][0]
+        if dn_prefix:
+            mon_dn = ','.join((dn_prefix, self._ctx))
+        else:
+            mon_dn = self._ctx
+        attr_value = self._data[mon_dn][attribute][0]
         if attribute == 'monitorTimestamp':
             res = datetime.datetime.strptime(attr_value, '%Y%m%d%H%M%SZ')
         else:
-            res = int(attr_value)
+            try:
+                res = int(attr_value)
+            except ValueError:
+                res = attr_value
         return res # end of get_value()
 
     def operation_counters(self):
@@ -99,6 +106,7 @@ class OpenLDAPObject:
     )
     all_monitor_entries_filter = (
         '(|'
+          '(objectClass=monitorServer)'
           '(objectClass=monitorOperation)'
           '(objectClass=monitoredObject)'
           '(objectClass=monitorCounterObject)'
