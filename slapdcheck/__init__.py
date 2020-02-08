@@ -12,6 +12,7 @@ import os
 import os.path
 import time
 import datetime
+import shlex
 
 import psutil
 
@@ -528,17 +529,24 @@ class SlapdCheck(MonitoringCheck):
         start_time = self._monitor_cache.get_value('cn=Start,cn=Time', 'monitorTimestamp')
         utc_now = datetime.datetime.now()
         newer_files = []
-        for fattr in (
-                'olcConfigDir',
-                'olcConfigFile',
-                'olcTLSCACertificateFile',
-                'olcTLSCertificateFile',
-                'olcTLSCertificateKeyFile',
-                'olcTLSDHParamFile',
-            ):
-            if not fattr in self._config_attrs:
-                continue
-            check_filename = self._config_attrs[fattr][0]
+        check_filenames = [
+            self._config_attrs[fattr][0]
+            for fattr in (
+                    'olcConfigDir',
+                    'olcConfigFile',
+                    'olcTLSCACertificateFile',
+                    'olcTLSCertificateFile',
+                    'olcTLSCertificateKeyFile',
+                    'olcTLSDHParamFile',
+            )
+            if fattr in self._config_attrs
+        ]
+        # optionally extend the list of files to be checked with slapd exec
+        # file read from the argument file if present
+        if 'olcArgsFile' in self._config_attrs:
+            with open(self._config_attrs['olcArgsFile'][0]) as args_file:
+                check_filenames.append(shlex.split(args_file.read())[0])
+        for check_filename in check_filenames:
             try:
                 check_file_mtime = datetime.datetime.utcfromtimestamp(int(os.stat(check_filename).st_mtime))
             except OSError:
@@ -980,7 +988,7 @@ class SlapdCheck(MonitoringCheck):
 
     def _check_provider_conns(self, local_csn_dict, syncrepl_list, syncrepl_topology):
         """
-        Connect and bind to all replicas to check whether they are 
+        Connect and bind to all replicas to check whether they are
         reachable and retrieve their context CSNs
         """
 
@@ -1189,7 +1197,7 @@ class SlapdCheck(MonitoringCheck):
 
         # Write current performance data to disk
         self._state.write_state(self._next_state)
-        
+
         # Check remote provider connections
         self._check_provider_conns(local_csn_dict, syncrepl_list, syncrepl_topology)
 
