@@ -339,6 +339,8 @@ class SlapdCheck(MonitoringCheck):
                 elapsed_percentage,
                 modulus_match,
             ),
+            not_after=cert_not_after.timestamp(),
+            not_before=cert_not_before.timestamp(),
         )
         # end of _check_tls_file()
 
