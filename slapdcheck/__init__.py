@@ -434,7 +434,7 @@ class SlapdCheck(MonitoringCheck):
             # strip ENTRY\n from response and parse the rest as LDIF
             _, sock_monitor_entry = LDIFParser.frombuf(
                 sock_response[6:],
-                ignored_attr_types=['sockLogLevel'],
+                ignored_attr_types=[b'sockLogLevel'],
                 max_entries=1
             ).list_entry_records()[0]
             sock_perf_data = {}
