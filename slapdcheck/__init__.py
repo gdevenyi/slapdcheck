@@ -11,7 +11,7 @@ import logging
 import os
 import os.path
 import time
-import datetime
+from datetime import datetime, timezone
 import shlex
 
 import psutil
@@ -314,7 +314,7 @@ class SlapdCheck(MonitoringCheck):
         cert_not_after = server_cert_obj.not_valid_after
         cert_not_before = server_cert_obj.not_valid_before
         modulus_match = server_cert_obj.public_key().public_numbers().n == server_key_obj.public_key().public_numbers().n
-        utc_now = datetime.datetime.now(cert_not_after.tzinfo)
+        utc_now = datetime.now(cert_not_after.tzinfo)
         cert_validity_rest = cert_not_after - utc_now
         if modulus_match is False or cert_validity_rest.days <= CERT_ERROR_DAYS:
             cert_check_result = CHECK_RESULT_ERROR
@@ -524,7 +524,7 @@ class SlapdCheck(MonitoringCheck):
             check_res = CHECK_RESULT_ERROR
         else:
             try:
-                build_time = datetime.datetime.strptime(rest[1:-1], '%b %d %Y %H:%M:%S').timestamp()
+                build_time = datetime.strptime(rest[1:-1], '%b %d %Y %H:%M:%S').timestamp()
             except ValueError:
                 build_time = 0.0
                 check_res = CHECK_RESULT_ERROR
@@ -558,8 +558,11 @@ class SlapdCheck(MonitoringCheck):
         """
         check whether slapd should be restarted
         """
-        start_time = self._monitor_cache.get_value('cn=Start,cn=Time', 'monitorTimestamp')
-        utc_now = datetime.datetime.now()
+        start_time = self._monitor_cache.get_value(
+            'cn=Start,cn=Time',
+            'monitorTimestamp'
+        ).replace(tzinfo=timezone.utc)
+        utc_now = datetime.now(tz=timezone.utc)
         newer_files = []
         check_filenames = [
             self._config_attrs[fattr][0]
@@ -580,7 +583,7 @@ class SlapdCheck(MonitoringCheck):
                 check_filenames.append(shlex.split(args_file.read())[0])
         for check_filename in check_filenames:
             try:
-                check_file_mtime = datetime.datetime.utcfromtimestamp(int(os.stat(check_filename).st_mtime))
+                check_file_mtime = datetime.fromtimestamp(int(os.stat(check_filename).st_mtime), timezone.utc)
             except OSError:
                 pass
             else:
@@ -605,7 +608,8 @@ class SlapdCheck(MonitoringCheck):
                     self._read_pid(),
                     start_time,
                     utc_now-start_time,
-                )
+                ),
+                start_time=start_time.timestamp(),
             )
         # end of _check_slapd_start()
 
