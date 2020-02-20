@@ -218,6 +218,7 @@ class SlapdCheck(MonitoringCheck):
     """
     item_names = (
         'SlapdCert',
+        'SlapdCheckTime',
         'SlapdConfig',
         'SlapdMonitor',
         'SlapdConns',
@@ -1138,6 +1139,8 @@ class SlapdCheck(MonitoringCheck):
 
     def checks(self):
 
+        check_started = time.time()
+
         # Get command-line arguments
         ldaps_uri = sys.argv[2] or 'ldaps://%s' % socket.getfqdn()
         my_authz_id = sys.argv[3]
@@ -1239,5 +1242,18 @@ class SlapdCheck(MonitoringCheck):
 
         # Check remote provider connections
         self._check_provider_conns(local_csn_dict, syncrepl_list, syncrepl_topology)
+
+        check_finished = time.time()
+        check_duration = check_finished - check_started
+
+        # Finally output the check's start and end times
+        self.result(
+            CHECK_RESULT_OK,
+            'SlapdCheckTime',
+            'Check took %0.2f secs to run' % (check_duration),
+            check_started=check_started,
+            check_finished=check_finished,
+            check_duration=check_duration,
+        )
 
         # end of checks()
