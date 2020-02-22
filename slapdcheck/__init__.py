@@ -21,9 +21,9 @@ try:
 except ImportError:
     lmdb = None
 
-import cryptography.x509
-from cryptography.hazmat.backends import default_backend as crypto_default_backend
-import cryptography.hazmat.primitives.asymmetric.rsa
+import asn1crypto.pem
+import asn1crypto.x509
+import asn1crypto.keys
 
 os.environ['LDAPNOINIT'] = '1'
 
@@ -285,7 +285,10 @@ class SlapdCheck(MonitoringCheck):
                 continue
             try:
                 with open(fname, 'rb') as tls_pem_file:
-                    tls_pem[tls_attr_name] = tls_pem_file.read()
+                    tls_pem[tls_attr_name] = asn1crypto.pem.unarmor(
+                        tls_pem_file.read(),
+                        multiple=False,
+                    )
             except CATCH_ALL_EXC as exc:
                 file_read_errors.append(
                     'Error reading %r: %s' % (fname, exc)
@@ -298,22 +301,15 @@ class SlapdCheck(MonitoringCheck):
                 ' / '.join(file_read_errors)
             )
             return
-        server_cert_obj = cryptography.x509.load_pem_x509_certificate(
-            tls_pem['olcTLSCertificateFile'],
-            crypto_default_backend(),
-        )
-        server_key_obj = cryptography.hazmat.primitives.serialization.load_pem_private_key(
-            tls_pem['olcTLSCertificateKeyFile'],
-            None,
-            crypto_default_backend(),
-        )
-        cert_not_after = server_cert_obj.not_valid_after
-        cert_not_before = server_cert_obj.not_valid_before
-        modulus_match = (
-            server_cert_obj.public_key().public_numbers().n
-            == server_key_obj.public_key().public_numbers().n
-        )
-        utc_now = datetime.now(cert_not_after.tzinfo)
+        cert = asn1crypto.x509.Certificate.load(tls_pem['olcTLSCertificateFile'][2])
+        key = asn1crypto.keys.RSAPrivateKey.load(tls_pem['olcTLSCertificateKeyFile'][2])
+        cert_not_before = cert['tbs_certificate']['validity']['not_before'].native
+        cert_not_after = cert['tbs_certificate']['validity']['not_after'].native
+        breakpoint()
+        cert_modulus = cert['tbs_certificate']['subject_public_key_info']['public_key'].parsed['modulus'].native
+        key_modulus = key['modulus'].native
+        modulus_match = cert_modulus == key_modulus
+        utc_now = datetime.now(tz=timezone.utc)
         cert_validity_rest = cert_not_after - utc_now
         if modulus_match is False or cert_validity_rest.days <= CERT_ERROR_DAYS:
             cert_check_result = CHECK_RESULT_ERROR

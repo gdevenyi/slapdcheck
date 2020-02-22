@@ -35,7 +35,7 @@ setup(
     install_requires=[
         'setuptools',
         'ldap0>=0.6.4',
-        'cryptography',
+        'asn1crypto',
         'psutil',
     ],
     extras_require = {
