@@ -58,6 +58,8 @@ class OpenMetricsCheck(SlapdCheck, MonitoringCheck):
             registry=registry,
         )
         for i in sorted(self._item_dict.keys()):
+            if self._item_dict[i] is None:
+                continue
             status, check_name, perf_data, _ = self._item_dict[i]
             if perf_data:
                 for k, v in perf_data.items():
