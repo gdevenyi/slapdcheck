@@ -45,7 +45,6 @@ test:centos7:
   - export SLAPD=/usr/local/openldap/libexec/slapd
   - export SCHEMA=/usr/local/openldap/etc/openldap/schema
   - export BIN=/usr/local/openldap/bin
-  - export SBIN=/usr/local/openldap/sbin
 
 test:debian:
   extends: .tests
@@ -59,4 +58,3 @@ test:debian:
   - export SLAPD=/usr/sbin/slapd
   - export SCHEMA=/etc/ldap/schema
   - export BIN=/usr/bin
-  - export SBIN=/usr/sbin
