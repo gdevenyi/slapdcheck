@@ -133,7 +133,8 @@ class MonitoringCheck:
                 # Log unhandled exception
                 err_lines = [66 * '-']
                 err_lines.append(
-                    '----------- %s.__class__.__dict__ -----------' % (self.__class__.__name__))
+                    '----------- %s.__class__.__dict__ -----------' % (self.__class__.__name__,)
+                )
                 err_lines.append(
                     pprint.pformat(self.__class__.__dict__, indent=1, width=66, depth=None))
                 err_lines.append('----------- vars() -----------')
@@ -151,7 +152,7 @@ class MonitoringCheck:
         """
         # FIX ME! Protect the following lines with a lock!
         if item_name in self._item_dict:
-            raise ValueError('Check item name %r already exists.' % (item_name))
+            raise ValueError('Check item name %r already exists.' % (item_name,))
         self._item_dict[item_name] = None
 
     def subst_item_name_chars(self, item_name):
@@ -269,7 +270,7 @@ class SlapdCheck(MonitoringCheck):
                 self.result(
                     CHECK_RESULT_OK,
                     'SlapdSASLHostname',
-                    'olcSaslHost %r found' % (olc_sasl_host),
+                    'olcSaslHost %r found' % (olc_sasl_host,),
                 )
         # end of _check_sasl_hostname()
 
@@ -286,7 +287,7 @@ class SlapdCheck(MonitoringCheck):
                 fname = self._config_attrs[tls_attr_name][0]
             except KeyError:
                 file_read_errors.append(
-                    'Attribute %r not set' % (tls_attr_name)
+                    'Attribute %r not set' % (tls_attr_name,)
                 )
             try:
                 with open(fname, 'rb') as tls_pem_file:
@@ -453,13 +454,13 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdSock',
-                'error retrieving back-sock listeners: %s' % (exc)
+                'error retrieving back-sock listeners: %s' % (exc,)
             )
         else:
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdSock',
-                'Found %d back-sock listeners' % (len(sock_listeners))
+                'Found %d back-sock listeners' % (len(sock_listeners),)
             )
             for item_name, sock_listener in sock_listeners.items():
                 self.add_item(item_name)
@@ -485,7 +486,7 @@ class SlapdCheck(MonitoringCheck):
                     except (IndexError, ValueError) as err:
                         sock_perf_data = {}
                         check_result = CHECK_RESULT_ERROR
-                        check_msgs.append('parsing error: %s' % (err))
+                        check_msgs.append('parsing error: %s' % (err,))
                     else:
                         check_result = CHECK_RESULT_OK
                     self.result(
@@ -777,7 +778,7 @@ class SlapdCheck(MonitoringCheck):
             ops_all_completed = 0
             ops_all_waiting = 0
             for ops_name, ops_initiated, ops_completed in monitor_ops_counters:
-                item_name = 'SlapdOps_%s' % (ops_name)
+                item_name = 'SlapdOps_%s' % (ops_name,)
                 self.add_item(item_name)
                 self._next_state[ops_name+'_ops_initiated'] = ops_initiated
                 self._next_state[ops_name+'_ops_completed'] = ops_completed
@@ -833,7 +834,7 @@ class SlapdCheck(MonitoringCheck):
         """
         try:
             mdb_entry_count = self._monitor_cache.get_value(
-                'cn=Database %d,cn=Databases' % (db_num),
+                'cn=Database %d,cn=Databases' % (db_num,),
                 'olmMDBEntries',
             )
             mdb_entries_source = 'olmMDBEntries'
@@ -874,11 +875,11 @@ class SlapdCheck(MonitoringCheck):
         """
         try:
             mdb_pages_max = self._monitor_cache.get_value(
-                'cn=Database %d,cn=Databases' % (db_num),
+                'cn=Database %d,cn=Databases' % (db_num,),
                 'olmMDBPagesMax',
             )
             mdb_pages_used = self._monitor_cache.get_value(
-                'cn=Database %d,cn=Databases' % (db_num),
+                'cn=Database %d,cn=Databases' % (db_num,),
                 'olmMDBPagesUsed',
             )
         except KeyError:
@@ -918,7 +919,7 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdDatabases',
-                'error retrieving DB suffixes: %s' % (exc)
+                'error retrieving DB suffixes: %s' % (exc,)
             )
             return
         self.result(
@@ -1250,7 +1251,7 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             CHECK_RESULT_OK,
             'SlapdCheckTime',
-            'Check took %0.2f secs to run' % (check_duration),
+            'Check took %0.2f secs to run' % (check_duration,),
             check_started=check_started,
             check_finished=check_finished,
             check_duration=check_duration,
