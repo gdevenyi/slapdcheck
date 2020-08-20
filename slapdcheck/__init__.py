@@ -289,6 +289,7 @@ class SlapdCheck(MonitoringCheck):
                 file_read_errors.append(
                     'Attribute %r not set' % (tls_attr_name,)
                 )
+                continue
             try:
                 with open(fname, 'rb') as tls_pem_file:
                     tls_pem[tls_attr_name] = tls_pem_file.read()
