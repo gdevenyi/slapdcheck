@@ -305,7 +305,10 @@ class SlapdCheck(MonitoringCheck):
         )
         cert_not_after = server_cert_obj.not_valid_after
         cert_not_before = server_cert_obj.not_valid_before
-        modulus_match = server_cert_obj.public_key().public_numbers().n == server_key_obj.public_key().public_numbers().n
+        modulus_match = (
+            server_cert_obj.public_key().public_numbers().n
+            == server_key_obj.public_key().public_numbers().n
+        )
         utc_now = datetime.now(cert_not_after.tzinfo)
         cert_validity_rest = cert_not_after - utc_now
         if modulus_match is False or cert_validity_rest.days <= CERT_ERROR_DAYS:
@@ -316,7 +319,7 @@ class SlapdCheck(MonitoringCheck):
             cert_check_result = CHECK_RESULT_OK
         # less exact usage of .days because of older
         # Python versions without timedelta.total_seconds()
-        elapsed_percentage = 100-100*float(cert_validity_rest.days)/float((cert_not_after-cert_not_before).days)
+        elapsed_percentage = 100 - 100*cert_validity_rest.days/(cert_not_after-cert_not_before).days
         self.result(
             cert_check_result,
             'SlapdCert',
@@ -575,7 +578,10 @@ class SlapdCheck(MonitoringCheck):
                 check_filenames.append(shlex.split(args_file.read())[0])
         for check_filename in check_filenames:
             try:
-                check_file_mtime = datetime.fromtimestamp(int(os.stat(check_filename).st_mtime), timezone.utc)
+                check_file_mtime = datetime.fromtimestamp(
+                    int(os.stat(check_filename).st_mtime),
+                    timezone.utc,
+                )
             except OSError:
                 pass
             else:
@@ -747,7 +753,12 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             CHECK_RESULT_OK,
             'SlapdStats',
-            'Stats: %d bytes (%0.1f bytes/sec) / %d entries (%0.1f entries/sec) / %d PDUs (%0.1f PDUs/sec) / %d referrals (%0.1f referrals/sec)' % (
+            (
+                'Stats: %d bytes (%0.1f bytes/sec) /'
+                ' %d entries (%0.1f entries/sec) /'
+                ' %d PDUs (%0.1f PDUs/sec) /'
+                ' %d referrals (%0.1f referrals/sec)'
+            ) % (
                 stats_bytes,
                 stats_bytes_rate,
                 stats_entries,
@@ -776,12 +787,23 @@ class SlapdCheck(MonitoringCheck):
                 ops_all_waiting += ops_waiting
                 ops_all_completed += ops_completed
                 ops_all_initiated += ops_initiated
-                ops_initiated_rate = self._get_rate(ops_name+'_ops_initiated', ops_initiated, last_time_span)
-                ops_completed_rate = self._get_rate(ops_name+'_ops_completed', ops_completed, last_time_span)
+                ops_initiated_rate = self._get_rate(
+                    ops_name+'_ops_initiated',
+                    ops_initiated,
+                    last_time_span,
+                )
+                ops_completed_rate = self._get_rate(
+                    ops_name+'_ops_completed',
+                    ops_completed,
+                    last_time_span,
+                )
                 self.result(
                     CHECK_RESULT_OK,
                     item_name,
-                    'completed %d of %d operations (%0.2f/s completed, %0.2f/s initiated, %d waiting)' % (
+                    (
+                        'completed %d of %d operations '
+                        '(%0.2f/s completed, %0.2f/s initiated, %d waiting)'
+                    ) % (
                         ops_completed,
                         ops_initiated,
                         ops_completed_rate,
@@ -792,8 +814,16 @@ class SlapdCheck(MonitoringCheck):
                     ops_initiated_rate=ops_initiated_rate,
                     ops_waiting=ops_waiting,
                 )
-            ops_all_initiated_rate = self._get_rate('ops_all_initiated', ops_all_initiated, last_time_span)
-            ops_all_completed_rate = self._get_rate('ops_all_completed', ops_all_completed, last_time_span)
+            ops_all_initiated_rate = self._get_rate(
+                'ops_all_initiated',
+                ops_all_initiated,
+                last_time_span,
+            )
+            ops_all_completed_rate = self._get_rate(
+                'ops_all_completed',
+                ops_all_completed,
+                last_time_span,
+            )
             self._next_state['ops_all_initiated'] = ops_all_initiated
             self._next_state['ops_all_completed'] = ops_all_completed
             if OPS_WAITING_CRIT is not None and ops_all_waiting > OPS_WAITING_CRIT:
@@ -804,7 +834,12 @@ class SlapdCheck(MonitoringCheck):
                 state = CHECK_RESULT_OK
             self.result(
                 state, 'SlapdOps',
-                '%d operation types / completed %d of %d operations (%0.2f/s completed, %0.2f/s initiated, %d waiting)' % (
+                (
+                    '%d operation types /'
+                    ' completed %d of %d operations (%0.2f/s completed,'
+                    ' %0.2f/s initiated,'
+                    ' %d waiting)'
+                ) % (
                     len(monitor_ops_counters),
                     ops_all_completed,
                     ops_all_initiated,
@@ -962,7 +997,7 @@ class SlapdCheck(MonitoringCheck):
 
         if syncrepl_target_fail_msgs or \
            len(remote_csn_dict) < len(syncrepl_topology):
-            slapd_provider_percentage = float(len(remote_csn_dict))/float(len(syncrepl_topology))*100
+            slapd_provider_percentage = 100 * len(remote_csn_dict) / len(syncrepl_topology)
             if slapd_provider_percentage >= SYNCREPL_PROVIDER_ERROR_PERCENTAGE:
                 check_result = CHECK_RESULT_WARNING
             else:
@@ -982,8 +1017,16 @@ class SlapdCheck(MonitoringCheck):
             count=len(remote_csn_dict),
             total=len(syncrepl_topology),
             percent=slapd_provider_percentage,
-            avg_latency=sum(task_connect_latency.values())/len(task_connect_latency) if task_connect_latency else 0.0,
-            max_latency=max(task_connect_latency.values()) if task_connect_latency else 0.0,
+            avg_latency=(
+                sum(task_connect_latency.values())/len(task_connect_latency)
+                if task_connect_latency
+                else 0.0
+            ),
+            max_latency=(
+                max(task_connect_latency.values())
+                if task_connect_latency
+                else 0.0
+            ),
         )
         return remote_csn_dict # end of _check_providers()
 
