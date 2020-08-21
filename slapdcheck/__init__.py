@@ -570,12 +570,12 @@ class SlapdCheck(MonitoringCheck):
         check_filenames = [
             self._config_attrs[fattr][0]
             for fattr in (
-                    'olcConfigDir',
-                    'olcConfigFile',
-                    'olcTLSCACertificateFile',
-                    'olcTLSCertificateFile',
-                    'olcTLSCertificateKeyFile',
-                    'olcTLSDHParamFile',
+                'olcConfigDir',
+                'olcConfigFile',
+                'olcTLSCACertificateFile',
+                'olcTLSCertificateFile',
+                'olcTLSCertificateKeyFile',
+                'olcTLSDHParamFile',
             )
             if fattr in self._config_attrs
         ]
