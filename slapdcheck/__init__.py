@@ -1003,6 +1003,7 @@ class SlapdCheck(MonitoringCheck):
         retrieve syncrepl topology
         """
         syncrepl_topology = {}
+        syncrepl_list = []
         try:
             syncrepl_list, syncrepl_topology = self._ldapi_conn.get_syncrepl_topology()
         except CATCH_ALL_EXC as exc:
