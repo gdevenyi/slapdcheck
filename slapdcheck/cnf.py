@@ -3,7 +3,6 @@
 slapdcheck.cnf - Configuration constants
 """
 
-import sys
 import os
 
 import ldap0
