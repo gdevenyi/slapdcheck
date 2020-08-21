@@ -126,9 +126,7 @@ class MonitoringCheck:
         """
         try:
             try:
-                start_time = time.time()
                 self.checks()
-                end_time = time.time()
             except Exception:
                 # Log unhandled exception
                 err_lines = [66 * '-']
