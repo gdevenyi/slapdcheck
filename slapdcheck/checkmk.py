@@ -11,7 +11,7 @@ import os
 import sys
 
 # local package imports
-from slapdcheck import MonitoringCheck, SlapdCheck
+from slapdcheck import SlapdCheck
 from slapdcheck.cnf import (
     CHECK_RESULT_ERROR,
     CHECK_RESULT_OK,
@@ -23,7 +23,7 @@ from slapdcheck.cnf import (
 # Classes
 #-----------------------------------------------------------------------
 
-class CheckMkSlapdCheck(SlapdCheck, MonitoringCheck):
+class CheckMkSlapdCheck(SlapdCheck):
     """
     slapd check for checkmk
     """
@@ -50,7 +50,16 @@ class CheckMkSlapdCheck(SlapdCheck, MonitoringCheck):
         """
         Outputs all check_mk results registered before with method result()
         """
-        MonitoringCheck.output(self)
+        # add default unknown result for all known check items
+        # which up to now did not receive a particular result
+        for i in sorted(self._item_dict.keys()):
+            if not self._item_dict[i]:
+                self.result(
+                    CHECK_RESULT_UNKNOWN,
+                    i,
+                    'No defined check result yet!',
+                )
+        # now output the result lines
         for i in sorted(self._item_dict.keys()):
             status, check_name, perf_data, check_msg = self._item_dict[i]
             sys.stdout.write(

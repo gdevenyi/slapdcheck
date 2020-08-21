@@ -15,7 +15,7 @@ from prometheus_client import Counter, Gauge, CollectorRegistry
 from prometheus_client.openmetrics.exposition import generate_latest
 
 # local package imports
-from slapdcheck import MonitoringCheck, SlapdCheck
+from slapdcheck import SlapdCheck
 from slapdcheck.cnf import (
     CHECK_RESULT_ERROR,
     CHECK_RESULT_OK,
@@ -27,7 +27,7 @@ from slapdcheck.cnf import (
 # Classes
 #-----------------------------------------------------------------------
 
-class OpenMetricsCheck(SlapdCheck, MonitoringCheck):
+class OpenMetricsCheck(SlapdCheck):
     """
     slapd exporter for generating Open Metrics output
     """

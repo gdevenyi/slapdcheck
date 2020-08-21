@@ -202,15 +202,6 @@ class MonitoringCheck:
         """
         Outputs all results registered before with method result()
         """
-        # add default unknown result for all known check items
-        # which up to now did not receive a particular result
-        for i in sorted(self._item_dict.keys()):
-            if not self._item_dict[i]:
-                self.result(
-                    CHECK_RESULT_UNKNOWN,
-                    i,
-                    'No defined check result yet!',
-                )
 
 
 class SlapdCheck(MonitoringCheck):
