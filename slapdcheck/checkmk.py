@@ -44,6 +44,7 @@ class CheckMkSlapdCheck(SlapdCheck):
         return '|'.join([
             '%s=%s' % (pkey, pval)
             for pkey, pval in pdat.items()
+            if not pkey.endswith('_total')
         ])
 
     def output(self):

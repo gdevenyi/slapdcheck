@@ -99,7 +99,6 @@ class MonitoringCheck:
             # later
             self._next_state = {}
         self.script_name = os.path.basename(sys.argv[0])
-        # end of __init__()
 
     def _get_rate(self, key, current_val, time_span):
         last_val = int(self._state.data.get(key, '0'))
@@ -107,7 +106,7 @@ class MonitoringCheck:
             val1, val2 = last_val, last_val+current_val
         else:
             val1, val2 = last_val, current_val
-        return (val2 - val1) / time_span # end of _get_rate()
+        return (val2 - val1) / time_span
 
     def checks(self):
         """
@@ -768,9 +767,12 @@ class SlapdCheck(MonitoringCheck):
                 stats_referrals,
                 stats_referrals_rate,
             ),
-            stats_bytes=stats_bytes_rate,
-            stats_entries=stats_entries_rate,
-            stats_pdu=stats_pdu_rate,
+            stats_bytes_total=stats_bytes,
+            stats_entries_total=stats_entries,
+            stats_bytes_rate=stats_bytes_rate,
+            stats_entries_rate=stats_entries_rate,
+            stats_pdu_total=stats_pdu,
+            stats_pdu_rate=stats_pdu_rate,
             stats_referrals=stats_referrals_rate,
         )
         monitor_ops_counters = self._monitor_cache.operation_counters()
@@ -810,6 +812,8 @@ class SlapdCheck(MonitoringCheck):
                         ops_initiated_rate,
                         ops_waiting,
                     ),
+                    ops_completed_total=ops_completed,
+                    ops_initiated_total=ops_initiated,
                     ops_completed_rate=ops_completed_rate,
                     ops_initiated_rate=ops_initiated_rate,
                     ops_waiting=ops_waiting,
@@ -847,6 +851,8 @@ class SlapdCheck(MonitoringCheck):
                     ops_all_initiated_rate,
                     ops_all_waiting,
                 ),
+                ops_completed_total=ops_all_completed,
+                ops_initiated_total=ops_all_initiated,
                 ops_completed_rate=ops_all_completed_rate,
                 ops_initiated_rate=ops_all_initiated_rate,
                 ops_waiting=ops_all_waiting,
