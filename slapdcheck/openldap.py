@@ -234,7 +234,7 @@ class OpenLDAPObject:
                     syncrepl_topology[provider_uri] = [
                         (db_num, db_suffix, sr_obj)
                     ]
-        return syncrepl_list, syncrepl_topology  # get_syncrepl_topology()
+        return syncrepl_list, syncrepl_topology
 
     def db_suffixes(self):
         """
@@ -253,7 +253,7 @@ class OpenLDAPObject:
             db_suffix = res.entry_s['olcSuffix'][0]
             db_dir = res.entry_s['olcDbDirectory'][0]
             result.append((db_num, db_suffix, db_type, db_dir))
-        return result  # db_suffixes()
+        return result
 
 
 class SlapdConnection(LDAPObject, OpenLDAPObject):
@@ -454,4 +454,3 @@ class SyncreplProviderTask(threading.Thread):
             ldap_conn.unbind_s()
         except CATCH_ALL_EXC as exc:
             pass
-        # end of SyncreplProviderTask.run()
