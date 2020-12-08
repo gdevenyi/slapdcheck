@@ -191,7 +191,11 @@ class MonitoringCheck:
         self._item_dict[item_name] = (
             status,
             item_name,
-            performance_data,
+            {
+                key: val
+                for key, val in performance_data.items()
+                if val is not None
+            },
             check_output or '',
         )
         # end of result()
