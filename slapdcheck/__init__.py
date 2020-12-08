@@ -643,26 +643,6 @@ class SlapdCheck(MonitoringCheck):
                     )
         return local_csn_dict # end of _get_local_csns()
 
-    def _open_ldapi_conn(self, local_ldapi_url):
-        """
-        Open local LDAPI connection, exits on error
-        """
-        try:
-            self._ldapi_conn = SlapdConnection(local_ldapi_url)
-            # Find out whether bind worked
-            local_wai = self._ldapi_conn.whoami_s()
-        except CATCH_ALL_EXC as exc:
-            self.result(
-                CHECK_RESULT_ERROR,
-                'SlapdConfig',
-                'Error while connecting to %r: %s' % (
-                    local_ldapi_url,
-                    exc,
-                )
-            )
-            sys.exit(1)
-        return local_wai # end of _open_ldapi_conn()
-
     def _check_conns(self):
         """
         check whether current connection count is healthy
@@ -1187,7 +1167,21 @@ class SlapdCheck(MonitoringCheck):
         ldaps_uri = sys.argv[2] or 'ldaps://%s' % socket.getfqdn()
         my_authz_id = sys.argv[3]
 
-        local_wai = self._open_ldapi_conn(sys.argv[1] or 'ldapi:///')
+        local_ldapi_url = sys.argv[1] or 'ldapi:///'
+        try:
+            self._ldapi_conn = SlapdConnection(local_ldapi_url)
+            # Find out whether bind worked
+            local_wai = self._ldapi_conn.whoami_s()
+        except CATCH_ALL_EXC as exc:
+            self.result(
+                CHECK_RESULT_ERROR,
+                'SlapdConfig',
+                'Error while connecting to %r: %s' % (
+                    local_ldapi_url,
+                    exc,
+                )
+            )
+            return
 
         # read cn=config
         #---------------
