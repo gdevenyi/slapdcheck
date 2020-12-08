@@ -191,7 +191,7 @@ class MonitoringCheck:
             status,
             item_name,
             performance_data,
-            check_output or u'',
+            check_output or '',
         )
         # end of result()
 
