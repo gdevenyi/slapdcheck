@@ -1220,12 +1220,22 @@ class SlapdCheck(MonitoringCheck):
             self.result(
                 CHECK_RESULT_OK,
                 'SlapdConfig',
-                'Successfully connected to %r as %r found %r and %r' % (
+                'Successfully connected to %r as %r found %r and %r%s' % (
                     self._ldapi_conn.uri,
                     local_wai,
                     self._ldapi_conn.configContext[0],
                     self._ldapi_conn.monitorContext[0],
-                )
+                    (
+                        ' server ID: {0:d} (0x{0:x})'.format(int(self._config_attrs['olcServerID'][0]))
+                        if 'olcServerID' in self._config_attrs
+                        else ''
+                    ),
+                ),
+                server_id=(
+                    int(self._config_attrs['olcServerID'][0])
+                    if 'olcServerID' in self._config_attrs
+                    else None
+                ),
             )
 
             self._check_sasl_hostname()
