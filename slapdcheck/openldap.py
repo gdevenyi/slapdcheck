@@ -361,9 +361,7 @@ class SyncreplProviderTask(threading.Thread):
         # Resolve hostname separately for fine-grained error message
         syncrepl_target_hostname = self.syncrepl_target_hostport.rsplit(':', 1)[0]
         try:
-            syncrepl_target_ipaddr = socket.gethostbyname(
-                syncrepl_target_hostname
-            )
+            syncrepl_target_ipaddr = socket.gethostbyname(syncrepl_target_hostname)
         except CATCH_ALL_EXC as exc:
             self.err_msgs.append('Error resolving hostname %r: %s' % (
                 syncrepl_target_hostname,
@@ -372,6 +370,8 @@ class SyncreplProviderTask(threading.Thread):
             return
 
         syncrepl_obj = self.syncrepl_topology[self.syncrepl_target_uri][0][2]
+
+        # Connect to remote replica
         try:
             ldap_conn = SlapdConnection(
                 self.syncrepl_target_uri,
@@ -399,9 +399,9 @@ class SyncreplProviderTask(threading.Thread):
                 exc,
             ))
             return
-        else:
-            syncrepl_target_uri = self.syncrepl_target_uri.lower()
-            self.connect_latency = ldap_conn.connect_latency
+
+        syncrepl_target_uri = self.syncrepl_target_uri.lower()
+        self.connect_latency = ldap_conn.connect_latency
 
         for db_num, db_suffix, _ in self.syncrepl_topology[syncrepl_target_uri]:
             item_name = '_'.join((
