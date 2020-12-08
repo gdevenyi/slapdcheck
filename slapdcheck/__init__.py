@@ -32,6 +32,7 @@ import ldap0
 from ldap0.ldif import LDIFParser
 
 # from internal sub-modules
+from .__about__ import __version__
 from .openldap import (
     SyncreplProviderTask,
     OpenLDAPMonitorCache,
@@ -1291,7 +1292,7 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             CHECK_RESULT_OK,
             'SlapdCheckTime',
-            'Check took %0.2f secs to run' % (check_duration,),
+            '%s %s took %0.2f secs to run' % (__name__, __version__, check_duration,),
             check_started=check_started,
             check_finished=check_finished,
             check_duration=check_duration,
