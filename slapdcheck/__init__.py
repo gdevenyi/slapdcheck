@@ -302,12 +302,11 @@ class SlapdCheck(MonitoringCheck):
             )
             return
         cert = asn1crypto.x509.Certificate.load(tls_pem['olcTLSCertificateFile'][2])
-        key = asn1crypto.keys.RSAPrivateKey.load(tls_pem['olcTLSCertificateKeyFile'][2])
+        key = asn1crypto.keys.PrivateKeyInfo.load(tls_pem['olcTLSCertificateKeyFile'][2])
         cert_not_before = cert['tbs_certificate']['validity']['not_before'].native
         cert_not_after = cert['tbs_certificate']['validity']['not_after'].native
-        breakpoint()
         cert_modulus = cert['tbs_certificate']['subject_public_key_info']['public_key'].parsed['modulus'].native
-        key_modulus = key['modulus'].native
+        key_modulus = key.native['private_key']['modulus']
         modulus_match = cert_modulus == key_modulus
         utc_now = datetime.now(tz=timezone.utc)
         cert_validity_rest = cert_not_after - utc_now
