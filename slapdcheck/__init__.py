@@ -582,24 +582,25 @@ class SlapdCheck(MonitoringCheck):
                 check_filenames.append(shlex.split(args_file.read())[0])
         for check_filename in check_filenames:
             try:
+                check_file_stat = os.stat(check_filename)
                 check_file_mtime = datetime.fromtimestamp(
-                    int(os.stat(check_filename).st_mtime),
+                    int(max(check_file_stat.st_mtime, check_file_stat.st_ctime)),
                     timezone.utc,
                 )
             except OSError:
                 pass
             else:
                 if check_file_mtime > start_time:
-                    newer_files.append('%r (%s)' % (check_filename, check_file_mtime))
+                    newer_files.append('%s (%s)' % (check_filename, check_file_mtime))
         if newer_files:
             self.result(
                 CHECK_RESULT_WARNING,
                 'SlapdStart',
-                'slapd[%d] needs restart! Started at %s, %s ago, now newer config: %s' % (
+                'slapd[%d] needs restart! Started at %s, %s ago, files with newer status: %s' % (
                     self._read_pid(),
                     start_time,
                     utc_now-start_time,
-                    ' / '.join(newer_files),
+                    ', '.join(newer_files),
                 )
             )
         else:
