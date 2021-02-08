@@ -336,7 +336,7 @@ class SyncreplProviderTask(threading.Thread):
             group=None,
             target=None,
             name=None,
-            args=(),
+            args=(()),
             kwargs={}
         )
         self.check_instance = check_instance
