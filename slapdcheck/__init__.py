@@ -301,17 +301,34 @@ class SlapdCheck(MonitoringCheck):
                 ' / '.join(file_read_errors)
             )
             return
-        try:
-            cert = asn1crypto.x509.Certificate.load(tls_pem['olcTLSCertificateFile'][2])
-            key = asn1crypto.keys.PrivateKeyInfo.load(tls_pem['olcTLSCertificateKeyFile'][2])
-            cert_not_before = cert['tbs_certificate']['validity']['not_before'].native
-            cert_not_after = cert['tbs_certificate']['validity']['not_after'].native
-            cert_modulus = cert['tbs_certificate']['subject_public_key_info']['public_key'].parsed['modulus'].native
-            key_modulus = key.native['private_key']['modulus']
-            modulus_match = cert_modulus == key_modulus
-        except CATCH_ALL_EXC as exc:
+        cert = asn1crypto.x509.Certificate.load(tls_pem['olcTLSCertificateFile'][2])
+        cert_not_before = cert['tbs_certificate']['validity']['not_before'].native
+        cert_not_after = cert['tbs_certificate']['validity']['not_after'].native
+        cert_modulus = cert['tbs_certificate']['subject_public_key_info']['public_key'].parsed['modulus'].native
+        for priv_key_class in (
+            asn1crypto.keys.PrivateKeyInfo,
+            asn1crypto.keys.RSAPrivateKey,
+            asn1crypto.keys.DSAPrivateKey,
+            asn1crypto.keys.ECPrivateKey,
+        ):
+            try:
+                key = priv_key_class.load(tls_pem['olcTLSCertificateKeyFile'][2])
+                key.native
+            except ValueError:
+                pass
+            else:
+                try:
+                    key_modulus = key.native['private_key']['modulus']
+                except (KeyError, TypeError):
+                    try:
+                        key_modulus = key.native['modulus']
+                    except KeyError:
+                        continue
+                modulus_match = cert_modulus == key_modulus
+                break
+        else:
             # asn1crypto failed to parse the key
-            modulus_match = str(exc)
+            modulus_match = 'unknown modulus'
         utc_now = datetime.now(tz=timezone.utc)
         cert_validity_rest = cert_not_after - utc_now
         if modulus_match is False or cert_validity_rest.days <= CERT_ERROR_DAYS:
