@@ -4,7 +4,7 @@ slapdcheck.__about__ - Meta information
 """
 import collections
 
-VersionInfo = collections.namedtuple('version_info', ('major', 'minor', 'micro'))
+VersionInfo = collections.namedtuple('VersionInfo', ('major', 'minor', 'micro'))
 __version_info__ = VersionInfo(
     major=3,
     minor=7,
