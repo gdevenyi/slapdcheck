@@ -7,8 +7,6 @@ slapdcheck.checkmk - local check for check_mk
 # Import modules
 #-----------------------------------------------------------------------
 
-import sys
-
 # from module package prometheus_client
 from prometheus_client import Gauge, CollectorRegistry
 from prometheus_client.openmetrics.exposition import generate_latest
@@ -56,7 +54,7 @@ class OpenMetricsCheck(SlapdCheck):
                     except ValueError:
                         pass
             check_mk_status.labels(name=check_name).set(status)
-        sys.stdout.write(generate_latest(registry).decode('utf-8'))
+        self._output_file.write(generate_latest(registry).decode('utf-8'))
         # end of output()
 
 

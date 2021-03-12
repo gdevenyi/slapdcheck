@@ -7,8 +7,6 @@ slapdcheck.checkmk - local check for check_mk
 # Import modules
 #-----------------------------------------------------------------------
 
-import sys
-
 # local package imports
 from . import SlapdCheck, run
 from .cnf import (
@@ -62,7 +60,7 @@ class CheckMkSlapdCheck(SlapdCheck):
         # now output the result lines
         for i in sorted(self._item_dict.keys()):
             status, check_name, perf_data, check_msg = self._item_dict[i]
-            sys.stdout.write(
+            self._output_file.write(
                 self.output_format.format(
                     status_code=status,
                     perf_data=self.serialize_perf_data(perf_data),
