@@ -127,15 +127,10 @@ class MonitoringCheck:
                 self.checks()
             except Exception:
                 # Log unhandled exception
-                err_lines = [66 * '-']
-                err_lines.append(
-                    '----------- %s.__class__.__dict__ -----------' % (self.__class__.__name__,)
-                )
-                err_lines.append(
-                    pprint.pformat(self.__class__.__dict__, indent=1, width=66, depth=None))
-                err_lines.append('----------- vars() -----------')
-                err_lines.append(
-                    pprint.pformat(vars(), indent=1, width=66, depth=None))
+                err_lines = [
+                    '----------- %s.__dict__ -----------' % (self.__class__.__name__,),
+                    pprint.pformat(self.__dict__, indent=2, width=66, depth=None),
+                ]
                 logging.exception('\n'.join(err_lines))
         finally:
             self.output()
@@ -907,6 +902,7 @@ class SlapdCheck(MonitoringCheck):
         If ITS#7770 is not available (prior to OpenLDAP 2.4.48) then
         this does nothing.
         """
+        raise ValueError('foo')
         try:
             mdb_pages_max = self._monitor_cache.get_value(
                 'cn=Database %d,cn=Databases' % (db_num,),
