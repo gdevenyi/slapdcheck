@@ -17,8 +17,6 @@ import asn1crypto.pem
 import asn1crypto.x509
 import asn1crypto.keys
 
-os.environ['LDAPNOINIT'] = '1'
-
 # from ldap0 package
 import ldap0
 from ldap0.ldif import LDIFParser
