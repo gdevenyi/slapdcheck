@@ -163,12 +163,12 @@ class MonitoringCheck:
                 s_list.append(char)
         return ''.join(s_list)  # _subst_item_name_chars()
 
-    def serialize_perf_data(self, performance_data):
+    def serialize_perf_data(self, pdat):
         """
-        return str representation of :performance_data: specific
+        return str representation of :pdat: specific
         for a certain monitoring system
         """
-        return str(performance_data)
+        return str(pdat)
 
     def result(self, status, item_name, check_output, **performance_data):
         """
@@ -300,9 +300,10 @@ class SlapdCheck(MonitoringCheck):
             )
             return
         cert = asn1crypto.x509.Certificate.load(tls_pem['olcTLSCertificateFile'][2])
-        cert_not_before = cert['tbs_certificate']['validity']['not_before'].native
-        cert_not_after = cert['tbs_certificate']['validity']['not_after'].native
-        cert_modulus = cert['tbs_certificate']['subject_public_key_info']['public_key'].parsed['modulus'].native
+        tbs_cert = cert['tbs_certificate']
+        cert_not_before = tbs_cert['validity']['not_before'].native
+        cert_not_after = tbs_cert['validity']['not_after'].native
+        cert_modulus = tbs_cert['subject_public_key_info']['public_key'].parsed['modulus'].native
         for priv_key_class in (
             asn1crypto.keys.PrivateKeyInfo,
             asn1crypto.keys.RSAPrivateKey,
@@ -454,7 +455,9 @@ class SlapdCheck(MonitoringCheck):
             # only add numeric monitor data to performance metrics
             for metric_key in sock_monitor_entry.keys():
                 try:
-                    sock_perf_data[metric_key.decode('ascii')] = float(sock_monitor_entry[metric_key][0])
+                    sock_perf_data[metric_key.decode('ascii')] = float(
+                        sock_monitor_entry[metric_key][0]
+                    )
                 except ValueError:
                     continue
             return sock_perf_data # end of _parse_sock_response()
@@ -1241,7 +1244,9 @@ class SlapdCheck(MonitoringCheck):
                     self._ldapi_conn.configContext[0],
                     self._ldapi_conn.monitorContext[0],
                     (
-                        ' server ID: {0:d} (0x{0:x})'.format(int(self._config_attrs['olcServerID'][0]))
+                        ' server ID: {0:d} (0x{0:x})'.format(
+                            int(self._config_attrs['olcServerID'][0])
+                        )
                         if 'olcServerID' in self._config_attrs
                         else ''
                     ),
