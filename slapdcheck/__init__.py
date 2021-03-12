@@ -13,11 +13,6 @@ import shlex
 
 import psutil
 
-try:
-    import lmdb
-except ImportError:
-    lmdb = None
-
 import asn1crypto.pem
 import asn1crypto.x509
 import asn1crypto.keys
@@ -721,26 +716,20 @@ class SlapdCheck(MonitoringCheck):
             )
         # end of _get_slapd_perfstats()
 
-    def _check_mdb_entry_count(self, db_num, db_suffix, db_dir):
+    def _check_mdb_entry_count(self, db_num, db_suffix):
         """
         returns number of entries in id2e sub-DB of MDB env in :db_dir:
+
+        If ITS#9154 is not available (prior to OpenLDAP 2.4.49) then
+        this does nothing.
         """
         try:
             mdb_entry_count = self._monitor_cache.get_value(
                 'cn=Database %d,cn=Databases' % (db_num,),
                 'olmMDBEntries',
             )
-            mdb_entries_source = 'olmMDBEntries'
         except KeyError:
-            if lmdb is None:
-                # fall-back to directly access .mdb files not possible
-                return
-            mdb_env = lmdb.open(db_dir, max_dbs=2)
-            with mdb_env.begin() as mdb_txn:
-                mdb_id2e_subdb = mdb_env.open_db(b'id2e', txn=mdb_txn, create=False)
-                mdb_id2e_stat = mdb_txn.stat(mdb_id2e_subdb)
-            mdb_entry_count = mdb_id2e_stat['entries']
-            mdb_entries_source = 'mdb_env'
+            return
         item_name = '_'.join((
             'SlapdEntryCount',
             str(db_num),
@@ -750,10 +739,9 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             CHECK_RESULT_WARNING*(mdb_entry_count < MINIMUM_ENTRY_COUNT),
             item_name,
-            '%r has %d entries (%s)' % (
+            '%r has %d entries' % (
                 db_suffix,
                 mdb_entry_count,
-                mdb_entries_source,
             ),
             mdb_entry_count=mdb_entry_count,
         )
@@ -831,7 +819,7 @@ class SlapdCheck(MonitoringCheck):
             # Check file sizes of MDB database files
             if db_type == 'mdb':
                 self._check_mdb_size(db_num, db_suffix, db_dir)
-                self._check_mdb_entry_count(db_num, db_suffix, db_dir)
+                self._check_mdb_entry_count(db_num, db_suffix)
         # end of _check_databases()
 
     def _check_providers(self, syncrepl_topology):

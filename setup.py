@@ -39,7 +39,6 @@ setup(
         'psutil',
     ],
     extras_require = {
-        'lmdb':  ['lmdb>=0.98'],
         'metrics':  ['prometheus_client>=0.7.1'],
     },
     zip_safe=False,
