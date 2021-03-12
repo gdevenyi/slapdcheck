@@ -7,7 +7,6 @@ slapdcheck.checkmk - local check for check_mk
 # Import modules
 #-----------------------------------------------------------------------
 
-import os
 import sys
 
 # from module package prometheus_client
@@ -15,7 +14,7 @@ from prometheus_client import Gauge, CollectorRegistry
 from prometheus_client.openmetrics.exposition import generate_latest
 
 # local package imports
-from slapdcheck import SlapdCheck
+from . import SlapdCheck, run
 
 #-----------------------------------------------------------------------
 # Classes
@@ -61,16 +60,5 @@ class OpenMetricsCheck(SlapdCheck):
         # end of output()
 
 
-def run():
-    """
-    run as check_mk local check
-    """
-    slapd_check = OpenMetricsCheck(
-        output_file=sys.stdout,
-        state_filename=os.path.basename(sys.argv[0][:-3]),
-    )
-    slapd_check.run()
-
-
 if __name__ == '__main__':
-    run()
+    run(OpenMetricsCheck)

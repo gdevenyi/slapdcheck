@@ -1160,5 +1160,15 @@ class SlapdCheck(MonitoringCheck):
             check_finished=check_finished,
             check_duration=check_duration,
         )
-
         # end of checks()
+
+
+def run(cls):
+    """
+    entry point
+    """
+    slapd_check = cls(
+        output_file=sys.stdout,
+        state_filename=os.path.basename(sys.argv[0][:-3]),
+    )
+    slapd_check.run()

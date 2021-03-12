@@ -7,12 +7,11 @@ slapdcheck.checkmk - local check for check_mk
 # Import modules
 #-----------------------------------------------------------------------
 
-import os
 import sys
 
 # local package imports
-from slapdcheck import SlapdCheck
-from slapdcheck.cnf import (
+from . import SlapdCheck, run
+from .cnf import (
     CHECK_RESULT_ERROR,
     CHECK_RESULT_OK,
     CHECK_RESULT_UNKNOWN,
@@ -75,16 +74,5 @@ class CheckMkSlapdCheck(SlapdCheck):
         # end of output()
 
 
-def run():
-    """
-    run as check_mk local check
-    """
-    slapd_check = CheckMkSlapdCheck(
-        output_file=sys.stdout,
-        state_filename=os.path.basename(sys.argv[0][:-3]),
-    )
-    slapd_check.run()
-
-
 if __name__ == '__main__':
-    run()
+    run(CheckMkSlapdCheck)
