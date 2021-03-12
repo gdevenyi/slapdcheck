@@ -7,18 +7,11 @@ import os
 
 import ldap0
 
-STATE_FILENAME = 'slapd_checkmk.state'
-
 # constants for the check result codes
 CHECK_RESULT_OK = 0
 CHECK_RESULT_WARNING = 1
 CHECK_RESULT_ERROR = 2
 CHECK_RESULT_UNKNOWN = 3
-
-# which check result to return in case server responds with
-# ldap0.UNAVAILABLE_CRITICAL_EXTENSION for no-op search control
-# set this to CHECK_RESULT_ERROR if certain your server supports the control
-CHECK_RESULT_NOOP_SRCH_UNAVAILABLE = CHECK_RESULT_OK
 
 # Timeout in seconds when connecting to local and remote LDAP servers
 # used for ldap0.OPT_NETWORK_TIMEOUT and ldap0.OPT_TIMEOUT
@@ -27,8 +20,6 @@ LDAP_TIMEOUT = 4.0
 # Timeout in seconds when connecting to slapd-sock listener
 SLAPD_SOCK_TIMEOUT = 2.0
 
-# Time in seconds for searching all entries with the noop search control
-NOOP_SEARCH_TIMEOUT = 6.0
 # at least search root entry should be present
 MINIMUM_ENTRY_COUNT = 20
 
