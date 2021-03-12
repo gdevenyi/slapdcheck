@@ -3,6 +3,7 @@
 slapdcheck - module package which implements OpenLDAP monitor checks
 """
 
+from abc import ABC, abstractmethod
 import sys
 import os
 import string
@@ -12,7 +13,7 @@ import logging
 from .state import CheckStateFile
 
 
-class MonitoringCheck:
+class MonitoringCheck(ABC):
     """
     base class for a monitoring check
     """
@@ -48,6 +49,7 @@ class MonitoringCheck:
             val1, val2 = last_val, current_val
         return (val2 - val1) / time_span
 
+    @abstractmethod
     def checks(self):
         """
         wrapper method implementing all checks, normally invoked by run()
@@ -59,6 +61,7 @@ class MonitoringCheck:
             )
         )
 
+    @abstractmethod
     def output(self):
         """
         Outputs all results registered before with method result()
