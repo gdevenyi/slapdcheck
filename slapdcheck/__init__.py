@@ -170,7 +170,8 @@ class SlapdCheck(MonitoringCheck):
         ):
             try:
                 key = priv_key_class.load(tls_pem['olcTLSCertificateKeyFile'][2])
-                key.native
+                # provoke error in case wrong loader class was used
+                _ = key.native
             except ValueError:
                 pass
             else:
