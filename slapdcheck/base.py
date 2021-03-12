@@ -128,11 +128,11 @@ class MonitoringCheck:
         # Provoke KeyError if item_name is not known
         try:
             self._item_dict[item_name]
-        except KeyError:
+        except KeyError as err:
             raise ValueError('item_name %r not in known item names %r' % (
                 item_name,
                 self._item_dict.keys(),
-            ))
+            )) from err
         self._item_dict[item_name] = (
             status,
             item_name,
