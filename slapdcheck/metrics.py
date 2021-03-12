@@ -16,12 +16,6 @@ from prometheus_client.openmetrics.exposition import generate_latest
 
 # local package imports
 from slapdcheck import SlapdCheck
-from slapdcheck.cnf import (
-    CHECK_RESULT_ERROR,
-    CHECK_RESULT_OK,
-    CHECK_RESULT_UNKNOWN,
-    CHECK_RESULT_WARNING,
-)
 
 #-----------------------------------------------------------------------
 # Classes
@@ -31,13 +25,6 @@ class OpenMetricsCheck(SlapdCheck):
     """
     slapd exporter for generating Open Metrics output
     """
-
-    checkmk_status = {
-        CHECK_RESULT_OK: 'OK',
-        CHECK_RESULT_WARNING: 'WARNING',
-        CHECK_RESULT_ERROR: 'ERROR',
-        CHECK_RESULT_UNKNOWN: 'UNKNOWN',
-    }
 
     def __init__(self, output_file, state_filename=None):
         SlapdCheck.__init__(self, output_file, state_filename)
