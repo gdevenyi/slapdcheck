@@ -11,7 +11,7 @@ import os
 import sys
 
 # from module package prometheus_client
-from prometheus_client import Counter, Gauge, CollectorRegistry
+from prometheus_client import Gauge, CollectorRegistry
 from prometheus_client.openmetrics.exposition import generate_latest
 
 # local package imports
