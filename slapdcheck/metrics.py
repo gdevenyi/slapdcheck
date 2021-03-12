@@ -48,11 +48,11 @@ class OpenMetricsCheck(SlapdCheck):
                 continue
             status, check_name, perf_data, _ = self._item_dict[i]
             if perf_data:
-                for k, v in perf_data.items():
-                    if k.endswith('_rate'):
+                for key, val in perf_data.items():
+                    if key.endswith('_rate'):
                         continue
                     try:
-                        check_mk_performance.labels(name=check_name, metric_name=k).set(v)
+                        check_mk_performance.labels(name=check_name, metric_name=key).set(val)
                     except ValueError:
                         pass
             check_mk_status.labels(name=check_name).set(status)
