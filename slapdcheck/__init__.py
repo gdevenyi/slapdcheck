@@ -60,6 +60,7 @@ from .cnf import (
     THREADS_PENDING_WARN,
 )
 from .base import MonitoringCheck
+from .openldap import SLAPD_CONFIG_ROOT_ATTRS, SLAPD_VENDOR_PREFIX
 
 
 class SlapdCheck(MonitoringCheck):
@@ -85,7 +86,6 @@ class SlapdCheck(MonitoringCheck):
         'SlapdThreads',
         'SlapdVersion',
     )
-    vendor_info_prefix = 'OpenLDAP: slapd '
 
     def __init__(self, output_file, state_filename=None):
         MonitoringCheck.__init__(self, output_file, state_filename)
@@ -388,10 +388,10 @@ class SlapdCheck(MonitoringCheck):
         """
         vendor_info = self._monitor_cache.get_value('', 'monitoredInfo')
         check_res = CHECK_RESULT_OK
-        if not vendor_info.startswith(self.vendor_info_prefix):
+        if not vendor_info.startswith(SLAPD_VENDOR_PREFIX):
             check_res = CHECK_RESULT_ERROR
         try:
-            slapd_version, rest = vendor_info[len(self.vendor_info_prefix):].split(' ', 1)
+            slapd_version, rest = vendor_info[len(SLAPD_VENDOR_PREFIX):].split(' ', 1)
         except ValueError:
             check_res = CHECK_RESULT_ERROR
         if not (rest[0] == '(' and rest[-1] == ')'):
@@ -1069,19 +1069,7 @@ class SlapdCheck(MonitoringCheck):
             _ = self._ldapi_conn.get_naming_context_attrs()
             self._config_attrs = self._ldapi_conn.read_s(
                 self._ldapi_conn.configContext[0],
-                attrlist=[
-                    'olcArgsFile',
-                    'olcConfigDir',
-                    'olcConfigFile',
-                    'olcPidFile',
-                    'olcSaslHost',
-                    'olcServerID',
-                    'olcThreads',
-                    'olcTLSCACertificateFile',
-                    'olcTLSCertificateFile',
-                    'olcTLSCertificateKeyFile',
-                    'olcTLSDHParamFile',
-                ],
+                attrlist=SLAPD_CONFIG_ROOT_ATTRS,
             ).entry_s
         except CATCH_ALL_EXC as exc:
             self.result(

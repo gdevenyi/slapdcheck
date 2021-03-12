@@ -21,6 +21,23 @@ from .cnf import (
     LDAP_TIMEOUT,
 )
 
+SLAPD_VENDOR_PREFIX = 'OpenLDAP: slapd '
+
+# attribute to read directory from cn=config
+SLAPD_CONFIG_ROOT_ATTRS = [
+    'olcArgsFile',
+    'olcConfigDir',
+    'olcConfigFile',
+    'olcPidFile',
+    'olcSaslHost',
+    'olcServerID',
+    'olcThreads',
+    'olcTLSCACertificateFile',
+    'olcTLSCertificateFile',
+    'olcTLSCertificateKeyFile',
+    'olcTLSDHParamFile',
+]
+
 
 class OpenLDAPMonitorCache:
     """
