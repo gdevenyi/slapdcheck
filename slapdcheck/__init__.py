@@ -105,8 +105,8 @@ class MonitoringCheck:
         """
         wrapper method implementing all checks, normally invoked by run()
         """
-        raise Exception(
-            "checks() not implemented in class %s.%s" % (
+        raise NotImplementedError(
+            "method .checks() not implemented in class %s.%s" % (
                 self.__class__.__module__,
                 self.__class__.__name__,
             )
