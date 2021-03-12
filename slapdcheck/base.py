@@ -110,13 +110,6 @@ class MonitoringCheck:
                 s_list.append(char)
         return ''.join(s_list)  # _subst_item_name_chars()
 
-    def serialize_perf_data(self, pdat):
-        """
-        return str representation of :pdat: specific
-        for a certain monitoring system
-        """
-        return str(pdat)
-
     def result(self, status, item_name, check_output, **performance_data):
         """
         Registers check_mk result to be output later

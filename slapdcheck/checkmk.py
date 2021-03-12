@@ -35,7 +35,7 @@ class CheckMkSlapdCheck(SlapdCheck):
     def __init__(self, output_file, state_filename=None):
         SlapdCheck.__init__(self, output_file, state_filename)
 
-    def serialize_perf_data(self, pdat):
+    def _serialize_perf_data(self, pdat):
         if not pdat:
             return '-'
         return '|'.join([
@@ -63,7 +63,7 @@ class CheckMkSlapdCheck(SlapdCheck):
             self._output_file.write(
                 self.output_format.format(
                     status_code=status,
-                    perf_data=self.serialize_perf_data(perf_data),
+                    perf_data=self._serialize_perf_data(perf_data),
                     name=self.subst_item_name_chars(check_name),
                     status_text=self.checkmk_status[status],
                     msg=check_msg,
