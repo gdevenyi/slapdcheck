@@ -69,4 +69,4 @@ CERT_WARN_DAYS = 50
 # set debug parameters for development (normally not needed)
 LDAP0_TRACE_LEVEL = int(os.environ.get('LDAP0_TRACE_LEVEL', '0'))
 ldap0._trace_level = LDAP0_TRACE_LEVEL
-# ldap0.set_option(ldap0.OPT_DEBUG_LEVEL,255)
+ldap0.set_option(ldap0.OPT_DEBUG_LEVEL, int(os.environ.get('LIBLDAP0_DEBUG_LEVEL', '0')))
