@@ -65,12 +65,6 @@ from .cnf import (
 from .state import CheckStateFile
 
 
-class NoneException(BaseException):
-    """
-    A dummy exception class used for disabling exception handling
-    """
-
-
 class MonitoringCheck:
     """
     base class for a monitoring check
