@@ -9,7 +9,7 @@ slapdcheck.checkmk - local check for check_mk
 
 # local package imports
 from . import SlapdCheck, run
-from .cnf import (
+from .cfg import (
     CHECK_RESULT_ERROR,
     CHECK_RESULT_OK,
     CHECK_RESULT_UNKNOWN,

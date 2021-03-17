@@ -13,13 +13,13 @@ from ldap0.ldapobject import LDAPObject
 from ldap0.ldapurl import LDAPUrl
 from ldap0.openldap import SyncReplDesc
 
-from .cnf import (
+from .cfg import (
     CATCH_ALL_EXC,
     CHECK_RESULT_ERROR,
     CHECK_RESULT_OK,
-    LDAP0_TRACE_LEVEL,
-    LDAP_TIMEOUT,
 )
+from .cfg import CFG
+
 
 SLAPD_VENDOR_PREFIX = 'OpenLDAP: slapd '
 
@@ -281,7 +281,7 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
     def __init__(
             self,
             uri,
-            trace_level=LDAP0_TRACE_LEVEL,
+            trace_level=0,
             tls_options=None,
             network_timeout=None,
             timeout=None,
@@ -294,13 +294,13 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
         LDAPObject.__init__(
             self,
             uri,
-            trace_level=trace_level,
+            trace_level=trace_level or ldap0._trace_level,
         )
         # Set timeout values
         if network_timeout is None:
-            network_timeout = LDAP_TIMEOUT
+            network_timeout = CFG.ldap_timeout
         if timeout is None:
-            timeout = LDAP_TIMEOUT
+            timeout = CFG.ldap_timeout
         self.set_option(ldap0.OPT_NETWORK_TIMEOUT, network_timeout)
         self.set_option(ldap0.OPT_TIMEOUT, timeout)
         tls_options = tls_options or {}

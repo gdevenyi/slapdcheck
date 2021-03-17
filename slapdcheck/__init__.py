@@ -28,32 +28,16 @@ from .openldap import (
     OpenLDAPMonitorCache,
     SlapdConnection,
 )
-from .cnf import (
+from .cfg import (
     CATCH_ALL_EXC,
-    CERT_ERROR_DAYS,
-    CERT_WARN_DAYS,
     CHECK_RESULT_ERROR,
     CHECK_RESULT_OK,
     CHECK_RESULT_UNKNOWN,
     CHECK_RESULT_WARNING,
-    CONNECTIONS_WARN_LOWER,
-    CONNECTIONS_WARN_PERCENTAGE,
-    LDAP_TIMEOUT,
-    MINIMUM_ENTRY_COUNT,
-    OPS_WAITING_CRIT,
-    OPS_WAITING_WARN,
-    SLAPD_SOCK_TIMEOUT,
-    SYNCREPL_HYSTERESIS_CRIT,
-    SYNCREPL_HYSTERESIS_WARN,
-    SYNCREPL_PROVIDER_ERROR_PERCENTAGE,
-    SYNCREPL_TIMEDELTA_CRIT,
-    SYNCREPL_TIMEDELTA_WARN,
-    THREADS_ACTIVE_WARN_LOWER,
-    THREADS_ACTIVE_WARN_UPPER,
-    THREADS_PENDING_WARN,
 )
 from .base import MonitoringCheck
 from .openldap import SLAPD_CONFIG_ROOT_ATTRS, SLAPD_VENDOR_PREFIX
+from .cfg import CFG
 
 
 class SlapdCheck(MonitoringCheck):
@@ -182,9 +166,9 @@ class SlapdCheck(MonitoringCheck):
             modulus_match = 'unknown modulus'
         utc_now = datetime.now(tz=timezone.utc)
         cert_validity_rest = cert_not_after - utc_now
-        if modulus_match is False or cert_validity_rest.days <= CERT_ERROR_DAYS:
+        if modulus_match is False or cert_validity_rest.days <= CFG.cert_error_days:
             cert_check_result = CHECK_RESULT_ERROR
-        elif cert_validity_rest.days <= CERT_WARN_DAYS:
+        elif cert_validity_rest.days <= CFG.cert_warn_days:
             cert_check_result = CHECK_RESULT_WARNING
         else:
             cert_check_result = CHECK_RESULT_OK
@@ -288,7 +272,7 @@ class SlapdCheck(MonitoringCheck):
             """
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as _sock:
                 _sock.connect(sock_path)
-                _sock.settimeout(SLAPD_SOCK_TIMEOUT)
+                _sock.settimeout(CFG.slapd_sock_timeout)
                 _sock_f = _sock.makefile('rwb')
                 _sock_f.write(b'MONITOR\n')
                 _sock_f.flush()
@@ -531,8 +515,8 @@ class SlapdCheck(MonitoringCheck):
         )
         current_connections_percentage = 100.0 * current_connections / max_connections
         state = CHECK_RESULT_WARNING * int(
-            current_connections < CONNECTIONS_WARN_LOWER or
-            current_connections_percentage >= CONNECTIONS_WARN_PERCENTAGE
+            current_connections < CFG.connections_warn_lower or
+            current_connections_percentage >= CFG.connections_warn_percentage
         )
         self.result(
             state,
@@ -560,9 +544,9 @@ class SlapdCheck(MonitoringCheck):
             'monitoredInfo',
         )
         state = int(
-            threads_active < THREADS_ACTIVE_WARN_LOWER or
-            threads_active > THREADS_ACTIVE_WARN_UPPER or
-            threads_pending > THREADS_PENDING_WARN
+            threads_active < CFG.threads_active_warn_lower or
+            threads_active > CFG.threads_active_warn_upper or
+            threads_pending > CFG.threads_pending_warn
         )
         self.result(
             state,
@@ -685,9 +669,9 @@ class SlapdCheck(MonitoringCheck):
             )
             self._next_state['ops_all_initiated'] = ops_all_initiated
             self._next_state['ops_all_completed'] = ops_all_completed
-            if OPS_WAITING_CRIT is not None and ops_all_waiting > OPS_WAITING_CRIT:
+            if CFG.ops_waiting_crit is not None and ops_all_waiting > CFG.ops_waiting_crit:
                 state = CHECK_RESULT_ERROR
-            elif OPS_WAITING_WARN is not None and ops_all_waiting > OPS_WAITING_WARN:
+            elif CFG.ops_waiting_warn is not None and ops_all_waiting > CFG.ops_waiting_warn:
                 state = CHECK_RESULT_WARNING
             else:
                 state = CHECK_RESULT_OK
@@ -735,7 +719,7 @@ class SlapdCheck(MonitoringCheck):
         ))
         self.add_item(item_name)
         self.result(
-            CHECK_RESULT_WARNING*(mdb_entry_count < MINIMUM_ENTRY_COUNT),
+            CHECK_RESULT_WARNING*(mdb_entry_count < CFG.minimum_entry_count),
             item_name,
             '%r has %d entries' % (
                 db_suffix,
@@ -852,7 +836,7 @@ class SlapdCheck(MonitoringCheck):
         if syncrepl_target_fail_msgs or \
            len(remote_csn_dict) < len(syncrepl_topology):
             slapd_provider_percentage = 100 * len(remote_csn_dict) / len(syncrepl_topology)
-            if slapd_provider_percentage >= SYNCREPL_PROVIDER_ERROR_PERCENTAGE:
+            if slapd_provider_percentage >= CFG.syncrepl_provider_error_percentage:
                 check_result = CHECK_RESULT_WARNING
             else:
                 check_result = CHECK_RESULT_ERROR
@@ -983,27 +967,27 @@ class SlapdCheck(MonitoringCheck):
                             )
                         )
 
-            if SYNCREPL_TIMEDELTA_CRIT is not None and \
-               max_csn_timedelta > SYNCREPL_TIMEDELTA_CRIT:
+            if CFG.syncrepl_timedelta_crit is not None and \
+               max_csn_timedelta > CFG.syncrepl_timedelta_crit:
                 old_critical_timestamp = float(
                     self._state.data.get(
                         item_name+'_critical',
                         str(now))
                     )
-                if now - old_critical_timestamp > SYNCREPL_HYSTERESIS_CRIT:
+                if now - old_critical_timestamp > CFG.syncrepl_hysteresis_crit:
                     state = CHECK_RESULT_ERROR
                 self._next_state[item_name+'_critical'] = old_critical_timestamp
             else:
                 self._next_state[item_name + '_critical'] = -1.0
-            if SYNCREPL_TIMEDELTA_WARN is not None and \
-                max_csn_timedelta > SYNCREPL_TIMEDELTA_WARN:
+            if CFG.syncrepl_timedelta_warn is not None and \
+                max_csn_timedelta > CFG.syncrepl_timedelta_warn:
                 old_warn_timestamp = float(
                     self._state.data.get(
                         item_name + '_warning',
                         str(now)
                     )
                 )
-                if now - old_warn_timestamp > SYNCREPL_HYSTERESIS_WARN:
+                if now - old_warn_timestamp > CFG.syncrepl_hysteresis_warn:
                     state = CHECK_RESULT_WARNING
                 self._next_state[item_name+'_warning'] = old_warn_timestamp
             else:
@@ -1030,23 +1014,15 @@ class SlapdCheck(MonitoringCheck):
 
         check_started = time.time()
 
-        # Get command-line arguments
-        ldaps_uri = sys.argv[2] or 'ldaps://%s' % socket.getfqdn()
-        my_authz_id = sys.argv[3]
-
-        local_ldapi_url = sys.argv[1] or 'ldapi:///'
         try:
-            self._ldapi_conn = SlapdConnection(local_ldapi_url)
+            self._ldapi_conn = SlapdConnection(CFG.ldapi_uri)
             # Find out whether bind worked
             local_wai = self._ldapi_conn.whoami_s()
         except CATCH_ALL_EXC as exc:
             self.result(
                 CHECK_RESULT_ERROR,
                 'SlapdConfig',
-                'Error while connecting to %r: %s' % (
-                    local_ldapi_url,
-                    exc,
-                )
+                'Error while connecting to %r: %s' % (CFG.ldapi_uri, exc),
             )
             return
 
@@ -1138,7 +1114,7 @@ class SlapdCheck(MonitoringCheck):
         # Close LDAPI connection
         self._ldapi_conn.unbind_s()
 
-        self._check_local_ldaps(ldaps_uri, my_authz_id)
+        self._check_local_ldaps(CFG.ldaps_uri, CFG.ldaps_authz_id)
 
         # Write current performance data to disk
         self._state.write_state(self._next_state)
@@ -1165,6 +1141,10 @@ def run(cls):
     """
     entry point
     """
+    CFG.read_config(sys.argv[1])
+    LDAP0_TRACE_LEVEL = int(os.environ.get('LDAP0_TRACE_LEVEL', '0'))
+    ldap0._trace_level = LDAP0_TRACE_LEVEL
+    ldap0.set_option(ldap0.OPT_DEBUG_LEVEL, int(os.environ.get('LIBLDAP0_DEBUG_LEVEL', '0')))
     slapd_check = cls(
         output_file=sys.stdout,
         state_filename=os.path.basename(sys.argv[0][:-3]),

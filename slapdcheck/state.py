@@ -5,7 +5,7 @@ slapdcheck.state - store local state
 
 import os
 
-from .cnf import CATCH_ALL_EXC
+from .cfg import CATCH_ALL_EXC
 
 
 class CheckStateFile:
