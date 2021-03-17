@@ -294,7 +294,7 @@ class SlapdConnection(LDAPObject, OpenLDAPObject):
         LDAPObject.__init__(
             self,
             uri,
-            trace_level=trace_level or ldap0._trace_level,
+            trace_level=trace_level,
         )
         # Set timeout values
         if network_timeout is None:
@@ -347,6 +347,7 @@ class SyncreplProviderTask(threading.Thread):
             check_instance,
             syncrepl_topology,
             syncrepl_target_uri,
+            ldap0_trace_level=0,
         ):
         threading.Thread.__init__(
             self,
@@ -356,6 +357,7 @@ class SyncreplProviderTask(threading.Thread):
             args=(()),
             kwargs={}
         )
+        self._ldap0_trace_level = ldap0_trace_level
         self.check_instance = check_instance
         self.syncrepl_topology = syncrepl_topology
         self.syncrepl_target_uri = syncrepl_target_uri
@@ -392,6 +394,7 @@ class SyncreplProviderTask(threading.Thread):
         try:
             ldap_conn = SlapdConnection(
                 self.syncrepl_target_uri,
+                trace_level=self._ldap0_trace_level,
                 tls_options={
                     # Set TLS connection options from TLS attribute read from
                     # configuration context

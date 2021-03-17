@@ -4,6 +4,7 @@ slapdcheck.cnf - Configuration
 
 import os
 import socket
+import logging
 from configparser import ConfigParser
 
 import ldap0
@@ -43,10 +44,12 @@ class ConfigParameters:
         'check_result_warning',
         'connections_warn_lower',
         'connections_warn_percentage',
+        'ldap0_trace_level',
         'ldapi_uri',
-        'ldaps_authz_id',        
+        'ldaps_authz_id',
         'ldaps_uri',
         'ldap_timeout',
+        'log_level',
         'minimum_entry_count',
         'ops_waiting_crit',
         'ops_waiting_warn',
@@ -78,10 +81,14 @@ class ConfigParameters:
         'threads_active_warn_lower': int,
         'threads_active_warn_upper': int,
         'threads_pending_warn': int,
+        'ldap0_trace_level': int,
     }
 
 
     def __init__(self):
+
+        # log level
+        self.log_level = logging.WARN
 
         # LDAP URI for local connection over IPC (Unix domain socket)
         self.ldapi_uri = 'ldapi://'
@@ -95,6 +102,9 @@ class ConfigParameters:
         # Timeout in seconds when connecting to local and remote LDAP servers
         # used for ldap0.OPT_NETWORK_TIMEOUT and ldap0.OPT_TIMEOUT
         self.ldap_timeout = 4.0
+
+        # trace_level used for LDAPObject instances
+        self.ldap0_trace_level = 0
 
         # Timeout in seconds when connecting to slapd-sock listener
         self.slapd_sock_timeout = 2.0
@@ -155,10 +165,10 @@ class ConfigParameters:
             raw_val = cfg_parser.get(DEFAULT_SECTION, key)
             try:
                 val = type_func(raw_val)
-            except ValueError:
+            except ValueError as err:
                 raise ValueError('Invalid value for %r. Expected %s string, but got %r' % (
                     key, type_func.__name__, raw_val
-                ))
+                )) from err
             setattr(CFG, key, val)
         # end of read_config()
 

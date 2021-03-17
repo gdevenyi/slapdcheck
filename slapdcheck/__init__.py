@@ -9,6 +9,7 @@ import os
 import os.path
 import time
 from datetime import datetime, timezone
+import logging
 import shlex
 
 import psutil
@@ -212,6 +213,7 @@ class SlapdCheck(MonitoringCheck):
         try:
             ldaps_conn = SlapdConnection(
                 ldaps_uri,
+                trace_level=CFG.ldap0_trace_level,
                 tls_options=client_tls_options,
             )
         except CATCH_ALL_EXC as exc:
@@ -819,6 +821,7 @@ class SlapdCheck(MonitoringCheck):
                 self,
                 syncrepl_topology,
                 syncrepl_target_uri,
+                ldap0_trace_level=CFG.ldap0_trace_level,
             )
             task_dict[syncrepl_target_uri].start()
 
@@ -1015,7 +1018,7 @@ class SlapdCheck(MonitoringCheck):
         check_started = time.time()
 
         try:
-            self._ldapi_conn = SlapdConnection(CFG.ldapi_uri)
+            self._ldapi_conn = SlapdConnection(CFG.ldapi_uri, trace_level=CFG.ldap0_trace_level)
             # Find out whether bind worked
             local_wai = self._ldapi_conn.whoami_s()
         except CATCH_ALL_EXC as exc:
@@ -1142,9 +1145,7 @@ def run(cls):
     entry point
     """
     CFG.read_config(sys.argv[1])
-    LDAP0_TRACE_LEVEL = int(os.environ.get('LDAP0_TRACE_LEVEL', '0'))
-    ldap0._trace_level = LDAP0_TRACE_LEVEL
-    ldap0.set_option(ldap0.OPT_DEBUG_LEVEL, int(os.environ.get('LIBLDAP0_DEBUG_LEVEL', '0')))
+    logging.getLogger().setLevel(CFG.log_level)
     slapd_check = cls(
         output_file=sys.stdout,
         state_filename=os.path.basename(sys.argv[0][:-3]),
