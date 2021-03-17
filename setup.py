@@ -44,8 +44,8 @@ setup(
     zip_safe=False,
     entry_points={
         'console_scripts': [
-            'slapd_checkmk = slapdcheck.checkmk:run',
-            'slapd_metrics = slapdcheck.metrics:run',
+            'slapd_checkmk = slapdcheck.checkmk',
+            'slapd_metrics = slapdcheck.metrics',
         ],
     },
 )
