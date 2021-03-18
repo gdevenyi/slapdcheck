@@ -58,5 +58,9 @@ class OpenMetricsCheck(SlapdCheck):
         # end of output()
 
 
-if __name__ == '__main__':
+def cli_run():
     run(OpenMetricsCheck)
+
+
+if __name__ == '__main__':
+    cli_run()
