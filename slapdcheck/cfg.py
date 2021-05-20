@@ -53,6 +53,8 @@ class ConfigParameters:
         'minimum_entry_count',
         'ops_waiting_crit',
         'ops_waiting_warn',
+        'server_id_min',
+        'server_id_max',
         'slapd_sock_timeout',
         'syncrepl_hysteresis_crit',
         'syncrepl_hysteresis_warn',
@@ -72,6 +74,8 @@ class ConfigParameters:
         'minimum_entry_count': int,
         'ops_waiting_crit': int,
         'ops_waiting_warn': int,
+        'server_id_min': int,
+        'server_id_max': int,
         'slapd_sock_timeout': float,
         'syncrepl_hysteresis_crit': float,
         'syncrepl_hysteresis_warn': float,
@@ -146,6 +150,11 @@ class ConfigParameters:
         # days to warn/error when checking server cert validity
         self.cert_error_days = 10
         self.cert_warn_days = 50
+
+        # minimum and maximum of valid serverID values
+        # error status in case of unexpected values
+        self.server_id_min = 1
+        self.server_id_max = 4095
 
     def read_config(self, cfg_filename):
         """

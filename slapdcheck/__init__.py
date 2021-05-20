@@ -1047,27 +1047,31 @@ class SlapdCheck(MonitoringCheck):
                 ),
             )
         else:
+            if 'olcServerID' in self._config_attrs:
+                server_id = int(self._config_attrs['olcServerID'][0])
+                server_id_msg = ' server ID: {0:d} (0x{0:x})'.format(server_id)
+                res_code = CHECK_RESULT_OK
+                if not CFG.server_id_min <= server_id <= CFG.server_id_max:
+                    res_code = CHECK_RESULT_ERROR
+                    server_id_msg += ', outside range {0:d}..{1:d}!'.format(
+                        CFG.server_id_min,
+                        CFG.server_id_max,
+                    )
+            else:
+                server_id = None
+                server_id_msg = ''
+                res_code = CHECK_RESULT_OK
             self.result(
-                CHECK_RESULT_OK,
+                res_code,
                 'SlapdConfig',
                 'Successfully connected to %r as %r found %r and %r%s' % (
                     self._ldapi_conn.uri,
                     local_wai,
                     self._ldapi_conn.configContext[0],
                     self._ldapi_conn.monitorContext[0],
-                    (
-                        ' server ID: {0:d} (0x{0:x})'.format(
-                            int(self._config_attrs['olcServerID'][0])
-                        )
-                        if 'olcServerID' in self._config_attrs
-                        else ''
-                    ),
+                    server_id_msg,
                 ),
-                server_id=(
-                    int(self._config_attrs['olcServerID'][0])
-                    if 'olcServerID' in self._config_attrs
-                    else None
-                ),
+                server_id=server_id,
             )
 
             self._check_sasl_hostname()
