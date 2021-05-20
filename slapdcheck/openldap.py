@@ -12,6 +12,7 @@ import ldap0
 from ldap0.ldapobject import LDAPObject
 from ldap0.ldapurl import LDAPUrl
 from ldap0.openldap import SyncReplDesc
+from ldap0.functions import strf_secs
 
 from .cfg import (
     CATCH_ALL_EXC,
@@ -461,10 +462,17 @@ class SyncreplProviderTask(threading.Thread):
                     self.check_instance.result(
                         CHECK_RESULT_OK,
                         item_name,
-                        '%d contextCSN attribute values retrieved for %r from %r' % (
+                        '%d contextCSN values found for %r on %r: %s' % (
                             len(self.remote_csn_dict[db_suffix]),
                             db_suffix,
                             ldap_conn.uri,
+                            ' / '.join([
+                                '{0}={1}'.format(
+                                    int(sid, 16),
+                                    strf_secs(csn_time),
+                                )
+                                for sid, csn_time in sorted(self.remote_csn_dict[db_suffix].items())
+                            ]),
                         ),
                         num_csn_values=len(self.remote_csn_dict[db_suffix]),
                         connect_latency=ldap_conn.connect_latency,
