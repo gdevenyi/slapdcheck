@@ -63,6 +63,7 @@ class SlapdCheck(MonitoringCheck):
         'SlapdStats',
         'SlapdThreads',
         'SlapdVersion',
+        'SlapdWaiters',
     )
 
     def __init__(self, output_file, state_filename=None):
@@ -528,6 +529,27 @@ class SlapdCheck(MonitoringCheck):
             percent=current_connections_percentage,
         )
         # end of _check_conns()
+
+    def _check_waiters(self):
+        """
+        check whether current thread count is healthy
+        """
+        waiters_read = self._monitor_cache.get_value(
+            'cn=Read,cn=Waiters',
+            'monitorCounter',
+        )
+        waiters_write = self._monitor_cache.get_value(
+            'cn=Write,cn=Waiters',
+            'monitorCounter',
+        )
+        self.result(
+            CHECK_RESULT_OK,
+            'SlapdWaiters',
+            'Waiters read: %d / write: %d' % (waiters_read, waiters_write),
+            waiters_read=waiters_read,
+            waiters_write=waiters_write,
+        )
+        # end of _check_waiters()
 
     def _check_threads(self):
         """
@@ -1110,6 +1132,7 @@ class SlapdCheck(MonitoringCheck):
         self._get_proc_info()
         self._check_conns()
         self._check_threads()
+        self._check_waiters()
         self._check_slapd_sock()
         self._check_databases()
         self._get_slapd_perfstats()
