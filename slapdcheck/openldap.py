@@ -433,8 +433,7 @@ class SyncreplProviderTask(threading.Thread):
             ))
             self.check_instance.add_item(item_name)
             try:
-                self.remote_csn_dict[db_suffix] = \
-                    ldap_conn.get_context_csn(db_suffix)
+                self.remote_csn_dict[db_suffix] = ldap_conn.get_context_csn(db_suffix)
             except CATCH_ALL_EXC as exc:
                 self.check_instance.result(
                     CHECK_RESULT_ERROR,
@@ -482,3 +481,5 @@ class SyncreplProviderTask(threading.Thread):
             ldap_conn.unbind_s()
         except CATCH_ALL_EXC as exc:
             pass
+
+        # end of run()

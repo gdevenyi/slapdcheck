@@ -891,7 +891,8 @@ class SlapdCheck(MonitoringCheck):
                 else 0.0
             ),
         )
-        return remote_csn_dict # end of _check_providers()
+        return remote_csn_dict
+        # end of _check_providers()
 
     def _get_syncrepl_topology(self):
         """
