@@ -377,7 +377,7 @@ class SyncreplProviderTask(threading.Thread):
 
     def _contextcsn_item_name(self, db_num, db_suffix):
         return '_'.join((
-            'SlapdContextCSN',
+            'SlapdSyncRepl',
             str(db_num),
             self.check_instance.subst_item_name_chars(db_suffix),
             self.check_instance.subst_item_name_chars(self.syncrepl_target_hostport),
@@ -482,6 +482,7 @@ class SyncreplProviderTask(threading.Thread):
                     'No local contextCSN attribute for suffix %r' % (db_suffix,),
                     num_csn_values=len(self.remote_csn_dict[db_suffix]),
                     connect_latency=ldap_conn.connect_latency,
+                    local_csn_missing=len(self.remote_csn_dict[db_suffix]),
                 )
                 continue
 

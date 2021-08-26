@@ -475,45 +475,10 @@ class SlapdCheck(MonitoringCheck):
     def _get_local_csns(self, syncrepl_list):
         local_csn_dict = {}
         for db_num, db_suffix, _ in syncrepl_list:
-            local_csn_dict[db_suffix] = []
-            item_name = '_'.join((
-                'SlapdSyncRepl',
-                str(db_num),
-                self.subst_item_name_chars(db_suffix),
-            ))
-            self.add_item(item_name)
             try:
                 local_csn_dict[db_suffix] = self._ldapi_conn.get_context_csn(db_suffix)
             except CATCH_ALL_EXC as exc:
-                self.result(
-                    CHECK_RESULT_ERROR,
-                    item_name,
-                    'Error while retrieving local contextCSN of %r: %s' % (
-                        db_suffix,
-                        exc,
-                    ),
-                    num_local_csn_values=0,
-                )
-                return
-            if not local_csn_dict[db_suffix]:
-                self.result(
-                    CHECK_RESULT_WARNING,
-                    item_name,
-                    'no local contextCSN values for %r' % (
-                        db_suffix,
-                    ),
-                    num_local_csn_values=0,
-                )
-                return
-            self.result(
-                CHECK_RESULT_OK,
-                item_name,
-                '%d local contextCSN values for %r' % (
-                    len(local_csn_dict[db_suffix]),
-                    db_suffix,
-                ),
-                num_local_csn_values=len(local_csn_dict[db_suffix]),
-            )
+                local_csn_dict[db_suffix] = []
         return local_csn_dict
         # end of _get_local_csns()
 
