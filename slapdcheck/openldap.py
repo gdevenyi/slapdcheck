@@ -348,6 +348,7 @@ class SyncreplProviderTask(threading.Thread):
             check_instance,
             syncrepl_topology,
             syncrepl_target_uri,
+            local_csn_dict,
             ldap0_trace_level=0,
         ):
         threading.Thread.__init__(
@@ -370,6 +371,7 @@ class SyncreplProviderTask(threading.Thread):
                 self.syncrepl_target_hostport,
             ))
         )
+        self._local_csn_dict = local_csn_dict
         self.remote_csn_dict = {}
         self.connect_latency = None
 

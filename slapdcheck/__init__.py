@@ -828,7 +828,7 @@ class SlapdCheck(MonitoringCheck):
                 self._check_mdb_entry_count(db_num, db_suffix)
         # end of _check_databases()
 
-    def _check_providers(self, syncrepl_topology):
+    def _check_providers(self, syncrepl_topology, local_csn_dict):
         """
         test connection to each provider
         """
@@ -843,6 +843,7 @@ class SlapdCheck(MonitoringCheck):
                 self,
                 syncrepl_topology,
                 syncrepl_target_uri,
+                local_csn_dict,
                 ldap0_trace_level=CFG.ldap0_trace_level,
             )
             task_dict[syncrepl_target_uri].start()
@@ -927,7 +928,7 @@ class SlapdCheck(MonitoringCheck):
         reachable and retrieve their context CSNs
         """
 
-        remote_csn_dict = self._check_providers(syncrepl_topology)
+        remote_csn_dict = self._check_providers(syncrepl_topology, local_csn_dict)
 
         state = CHECK_RESULT_WARNING
 
