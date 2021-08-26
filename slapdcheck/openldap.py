@@ -463,37 +463,39 @@ class SyncreplProviderTask(threading.Thread):
                     )
                 )
                 continue
-            else:
-                if not self.remote_csn_dict[db_suffix]:
-                    self.check_instance.result(
-                        CHECK_RESULT_ERROR,
-                        self._contextcsn_item_name(db_num, db_suffix),
-                        'no attribute contextCSN for %r on %r' % (
-                            db_suffix,
-                            ldap_conn.uri,
-                        ),
-                        num_csn_values=len(self.remote_csn_dict[db_suffix]),
-                        connect_latency=ldap_conn.connect_latency,
-                    )
-                else:
-                    self.check_instance.result(
-                        CHECK_RESULT_OK,
-                        self._contextcsn_item_name(db_num, db_suffix),
-                        '%d contextCSN values found for %r on %r: %s' % (
-                            len(self.remote_csn_dict[db_suffix]),
-                            db_suffix,
-                            ldap_conn.uri,
-                            ' / '.join([
-                                '{0}={1}'.format(
-                                    int(sid, 16),
-                                    strf_secs(csn_time),
-                                )
-                                for sid, csn_time in sorted(self.remote_csn_dict[db_suffix].items())
-                            ]),
-                        ),
-                        num_csn_values=len(self.remote_csn_dict[db_suffix]),
-                        connect_latency=ldap_conn.connect_latency,
-                    )
+
+            if not self.remote_csn_dict[db_suffix]:
+                self.check_instance.result(
+                    CHECK_RESULT_ERROR,
+                    self._contextcsn_item_name(db_num, db_suffix),
+                    'no attribute contextCSN for %r on %r' % (
+                        db_suffix,
+                        ldap_conn.uri,
+                    ),
+                    num_csn_values=len(self.remote_csn_dict[db_suffix]),
+                    connect_latency=ldap_conn.connect_latency,
+                )
+                continue
+
+            self.check_instance.result(
+                CHECK_RESULT_OK,
+                self._contextcsn_item_name(db_num, db_suffix),
+                '%d contextCSN values found for %r on %r: %s' % (
+                    len(self.remote_csn_dict[db_suffix]),
+                    db_suffix,
+                    ldap_conn.uri,
+                    ' / '.join([
+                        '{0}={1}'.format(
+                            int(sid, 16),
+                            strf_secs(csn_time),
+                        )
+                        for sid, csn_time in sorted(self.remote_csn_dict[db_suffix].items())
+                    ]),
+                ),
+                num_csn_values=len(self.remote_csn_dict[db_suffix]),
+                connect_latency=ldap_conn.connect_latency,
+            )
+
         # Close the LDAP connection to the remote replica
         try:
             ldap_conn.unbind_s()
