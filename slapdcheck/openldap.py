@@ -371,22 +371,41 @@ class SyncreplProviderTask(threading.Thread):
             ))
         )
         self.remote_csn_dict = {}
-        self.err_msgs = []
         self.connect_latency = None
+
+    def _contextcsn_item_name(self, db_num, db_suffix):
+        return '_'.join((
+            'SlapdContextCSN',
+            str(db_num),
+            self.check_instance.subst_item_name_chars(db_suffix),
+            self.check_instance.subst_item_name_chars(self.syncrepl_target_hostport),
+        ))
 
     def run(self):
         """
         connect to provider replica and retrieve contextCSN values for databases
         """
+
+        syncrepl_target_uri = self.syncrepl_target_uri.lower()
+
+        # register the check items
+        for db_num, db_suffix, _ in self.syncrepl_topology[syncrepl_target_uri]:
+            self.check_instance.add_item(self._contextcsn_item_name(db_num, db_suffix))
+
         # Resolve hostname separately for fine-grained error message
         syncrepl_target_hostname = self.syncrepl_target_hostport.rsplit(':', 1)[0]
         try:
             syncrepl_target_ipaddr = socket.gethostbyname(syncrepl_target_hostname)
         except CATCH_ALL_EXC as exc:
-            self.err_msgs.append('Error resolving hostname %r: %s' % (
-                syncrepl_target_hostname,
-                exc,
-            ))
+            for db_num, db_suffix, _ in self.syncrepl_topology[syncrepl_target_uri]:
+                self.check_instance.result(
+                    CHECK_RESULT_ERROR,
+                    self._contextcsn_item_name(db_num, db_suffix),
+                    'Error resolving hostname %r: %s' % (
+                        syncrepl_target_hostname,
+                        exc,
+                    )
+                )
             return
 
         syncrepl_obj = self.syncrepl_topology[self.syncrepl_target_uri][0][2]
@@ -414,30 +433,27 @@ class SyncreplProviderTask(threading.Thread):
                 cred=syncrepl_obj.credentials,
             )
         except CATCH_ALL_EXC as exc:
-            self.err_msgs.append('Error connecting to %r (%s): %s' % (
-                self.syncrepl_target_uri,
-                syncrepl_target_ipaddr,
-                exc,
-            ))
+            for db_num, db_suffix, _ in self.syncrepl_topology[syncrepl_target_uri]:
+                self.check_instance.result(
+                    CHECK_RESULT_ERROR,
+                    self._contextcsn_item_name(db_num, db_suffix),
+                    'Error connecting to %r (%s): %s' % (
+                        self.syncrepl_target_uri,
+                        syncrepl_target_ipaddr,
+                        exc,
+                    )
+                )
             return
 
-        syncrepl_target_uri = self.syncrepl_target_uri.lower()
         self.connect_latency = ldap_conn.connect_latency
 
         for db_num, db_suffix, _ in self.syncrepl_topology[syncrepl_target_uri]:
-            item_name = '_'.join((
-                'SlapdContextCSN',
-                str(db_num),
-                self.check_instance.subst_item_name_chars(db_suffix),
-                self.check_instance.subst_item_name_chars(self.syncrepl_target_hostport),
-            ))
-            self.check_instance.add_item(item_name)
             try:
                 self.remote_csn_dict[db_suffix] = ldap_conn.get_context_csn(db_suffix)
             except CATCH_ALL_EXC as exc:
                 self.check_instance.result(
                     CHECK_RESULT_ERROR,
-                    item_name,
+                    self._contextcsn_item_name(db_num, db_suffix),
                     'Exception while retrieving remote contextCSN for %r from %r: %s' % (
                         db_suffix,
                         ldap_conn.uri,
@@ -449,7 +465,7 @@ class SyncreplProviderTask(threading.Thread):
                 if not self.remote_csn_dict[db_suffix]:
                     self.check_instance.result(
                         CHECK_RESULT_ERROR,
-                        item_name,
+                        self._contextcsn_item_name(db_num, db_suffix),
                         'no attribute contextCSN for %r on %r' % (
                             db_suffix,
                             ldap_conn.uri,
@@ -460,7 +476,7 @@ class SyncreplProviderTask(threading.Thread):
                 else:
                     self.check_instance.result(
                         CHECK_RESULT_OK,
-                        item_name,
+                        self._contextcsn_item_name(db_num, db_suffix),
                         '%d contextCSN values found for %r on %r: %s' % (
                             len(self.remote_csn_dict[db_suffix]),
                             db_suffix,

@@ -853,8 +853,6 @@ class SlapdCheck(MonitoringCheck):
             task.join()
             if task.remote_csn_dict:
                 remote_csn_dict[syncrepl_target_uri] = task.remote_csn_dict
-            if task.err_msgs:
-                syncrepl_target_fail_msgs.extend(task.err_msgs)
             if task.connect_latency is not None:
                 task_connect_latency[syncrepl_target_uri] = task.connect_latency
 
