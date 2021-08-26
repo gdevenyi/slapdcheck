@@ -447,8 +447,6 @@ class SyncreplProviderTask(threading.Thread):
                 )
             return
 
-        self.connect_latency = ldap_conn.connect_latency
-
         for db_num, db_suffix, _ in self.syncrepl_topology[syncrepl_target_uri]:
             try:
                 self.remote_csn_dict[db_suffix] = ldap_conn.get_context_csn(db_suffix)
@@ -477,23 +475,59 @@ class SyncreplProviderTask(threading.Thread):
                 )
                 continue
 
+            if not (self._local_csn_dict and self._local_csn_dict[db_suffix]):
+                self.check_instance.result(
+                    CHECK_RESULT_ERROR,
+                    self._contextcsn_item_name(db_num, db_suffix),
+                    'No local contextCSN attribute for suffix %r' % (db_suffix,),
+                    num_csn_values=len(self.remote_csn_dict[db_suffix]),
+                    connect_latency=ldap_conn.connect_latency,
+                )
+                continue
+
+            # compare contextCSN values pair-wise for each serverID value
+            missing_local = []
+            csn_deltas = {}
+            for sid, remote_csn_timestamp in sorted(self.remote_csn_dict[db_suffix].items()):
+                if sid not in self._local_csn_dict[db_suffix]:
+                    missing_local.append(sid)
+                    continue
+                csn_delta = abs(self._local_csn_dict[db_suffix][sid]-remote_csn_timestamp)
+                csn_deltas[sid] = csn_delta
+
+            sum_csn_delta=sum(csn_deltas.values())
+            avg_csn_delta=sum_csn_delta / len(csn_deltas)
+            max_csn_delta=max(csn_deltas.values())
+
             self.check_instance.result(
-                CHECK_RESULT_OK,
+                (
+                    CHECK_RESULT_OK
+                    if (
+                        self._local_csn_dict[db_suffix]
+                        and not missing_local
+                        and sum_csn_delta == 0
+                    )
+                    else CHECK_RESULT_ERROR
+                ),
                 self._contextcsn_item_name(db_num, db_suffix),
-                '%d contextCSN values found for %r on %r: %s' % (
+                '%d remote contextCSN values found for %r on %r: %s' % (
                     len(self.remote_csn_dict[db_suffix]),
                     db_suffix,
                     ldap_conn.uri,
                     ' / '.join([
-                        '{0}={1}'.format(
+                        '{0}={1} ({2:0.1f})'.format(
                             int(sid, 16),
                             strf_secs(csn_time),
+                            csn_deltas[sid],
                         )
                         for sid, csn_time in sorted(self.remote_csn_dict[db_suffix].items())
                     ]),
                 ),
                 num_csn_values=len(self.remote_csn_dict[db_suffix]),
                 connect_latency=ldap_conn.connect_latency,
+                avg_csn_delta=sum(csn_deltas.values())/len(csn_deltas),
+                max_csn_delta=max(csn_deltas.values()),
+                local_csn_missing=len(missing_local),
             )
 
         # Close the LDAP connection to the remote replica

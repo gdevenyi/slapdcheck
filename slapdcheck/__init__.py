@@ -492,17 +492,30 @@ class SlapdCheck(MonitoringCheck):
                         db_suffix,
                         exc,
                     ),
+                    num_local_csn_values=0,
                 )
-            else:
-                if not local_csn_dict[db_suffix]:
-                    self.result(
-                        CHECK_RESULT_UNKNOWN,
-                        item_name,
-                        'no local contextCSN values for %r' % (
-                            db_suffix,
-                        ),
-                    )
-        return local_csn_dict # end of _get_local_csns()
+                return
+            if not local_csn_dict[db_suffix]:
+                self.result(
+                    CHECK_RESULT_WARNING,
+                    item_name,
+                    'no local contextCSN values for %r' % (
+                        db_suffix,
+                    ),
+                    num_local_csn_values=0,
+                )
+                return
+            self.result(
+                CHECK_RESULT_OK,
+                item_name,
+                '%d local contextCSN values for %r' % (
+                    len(local_csn_dict[db_suffix]),
+                    db_suffix,
+                ),
+                num_local_csn_values=len(local_csn_dict[db_suffix]),
+            )
+        return local_csn_dict
+        # end of _get_local_csns()
 
     def _check_conns(self):
         """
@@ -854,8 +867,6 @@ class SlapdCheck(MonitoringCheck):
             task.join()
             if task.remote_csn_dict:
                 remote_csn_dict[syncrepl_target_uri] = task.remote_csn_dict
-            if task.connect_latency is not None:
-                task_connect_latency[syncrepl_target_uri] = task.connect_latency
 
         if syncrepl_target_fail_msgs or \
            len(remote_csn_dict) < len(syncrepl_topology):
@@ -879,16 +890,6 @@ class SlapdCheck(MonitoringCheck):
             count=len(remote_csn_dict),
             total=len(syncrepl_topology),
             percent=slapd_provider_percentage,
-            avg_latency=(
-                sum(task_connect_latency.values())/len(task_connect_latency)
-                if task_connect_latency
-                else 0.0
-            ),
-            max_latency=(
-                max(task_connect_latency.values())
-                if task_connect_latency
-                else 0.0
-            ),
         )
         return remote_csn_dict
         # end of _check_providers()
@@ -921,119 +922,6 @@ class SlapdCheck(MonitoringCheck):
             )
         return syncrepl_list, syncrepl_topology
         # end of _get_syncrepl_topology()
-
-    def _check_provider_conns(self, local_csn_dict, syncrepl_list, syncrepl_topology):
-        """
-        Connect and bind to all replicas to check whether they are
-        reachable and retrieve their context CSNs
-        """
-
-        remote_csn_dict = self._check_providers(syncrepl_topology, local_csn_dict)
-
-        state = CHECK_RESULT_WARNING
-
-        now = time.time()
-
-        for db_num, db_suffix, _ in syncrepl_list:
-
-            item_name = '_'.join((
-                'SlapdSyncRepl',
-                str(db_num),
-                self.subst_item_name_chars(db_suffix),
-            ))
-            issues = []
-
-            if not local_csn_dict[db_suffix]:
-                # Message output done before => silent here
-                state = CHECK_RESULT_UNKNOWN
-                issues.append('no local CSNs avaiable => skip')
-                continue
-
-            max_csn_timedelta = 0.0
-
-            for syncrepl_target_uri in syncrepl_topology:
-
-                try:
-                    remote_csn_parsed_dict = remote_csn_dict[syncrepl_target_uri][db_suffix]
-                except KeyError as key_error:
-                    issues.append(
-                        'KeyError for %r / %r: %s' % (
-                            syncrepl_target_uri,
-                            db_suffix,
-                            key_error,
-                        )
-                    )
-                    continue
-
-                for server_id, local_csn_timestamp in local_csn_dict[db_suffix].items():
-
-                    if not server_id in remote_csn_parsed_dict:
-                        state = CHECK_RESULT_WARNING
-                        issues.append(
-                            'contextCSN of %s missing on replica %r' % (
-                                server_id,
-                                syncrepl_target_uri,
-                            )
-                        )
-                        continue
-
-                    remote_csn_timestamp = remote_csn_parsed_dict[server_id]
-
-                    csn_timedelta = abs(local_csn_timestamp-remote_csn_timestamp)
-
-                    if csn_timedelta > max_csn_timedelta:
-                        max_csn_timedelta = csn_timedelta
-                    if csn_timedelta:
-                        issues.append(
-                            '%s contextCSN delta for %s: %0.1f s' % (
-                                syncrepl_target_uri,
-                                server_id,
-                                csn_timedelta
-                            )
-                        )
-
-            if CFG.syncrepl_timedelta_crit is not None and \
-               max_csn_timedelta > CFG.syncrepl_timedelta_crit:
-                old_critical_timestamp = float(
-                    self._state.data.get(
-                        item_name+'_critical',
-                        str(now))
-                    )
-                if now - old_critical_timestamp > CFG.syncrepl_hysteresis_crit:
-                    state = CHECK_RESULT_ERROR
-                self._next_state[item_name+'_critical'] = old_critical_timestamp
-            else:
-                self._next_state[item_name + '_critical'] = -1.0
-            if CFG.syncrepl_timedelta_warn is not None and \
-                max_csn_timedelta > CFG.syncrepl_timedelta_warn:
-                old_warn_timestamp = float(
-                    self._state.data.get(
-                        item_name + '_warning',
-                        str(now)
-                    )
-                )
-                if now - old_warn_timestamp > CFG.syncrepl_hysteresis_warn:
-                    state = CHECK_RESULT_WARNING
-                self._next_state[item_name+'_warning'] = old_warn_timestamp
-            else:
-                self._next_state[item_name+'_warning'] = -1.0
-
-            if not issues:
-                state = 0
-                issues.append('no replication issues determined')
-
-            self.result(
-                state,
-                item_name,
-                '%r max. contextCSN delta: %0.1f / %s' % (
-                    db_suffix,
-                    max_csn_timedelta,
-                    ' / '.join(issues),
-                ),
-                max_csn_timedelta=max_csn_timedelta,
-            )
-
-        # end of _check_provider_conns()
 
     def checks(self):
 
@@ -1150,7 +1038,7 @@ class SlapdCheck(MonitoringCheck):
         self._state.write_state(self._next_state)
 
         # Check remote provider connections
-        self._check_provider_conns(local_csn_dict, syncrepl_list, syncrepl_topology)
+        self._check_providers(syncrepl_topology, local_csn_dict)
 
         check_finished = time.time()
         check_duration = check_finished - check_started

@@ -27,8 +27,12 @@ CHECK_RESULT_WARNING = 1
 CHECK_RESULT_ERROR = 2
 CHECK_RESULT_UNKNOWN = 3
 
+class DummyException(BaseException):
+    pass
+
 # catch-all exception
 CATCH_ALL_EXC = (Exception, ldap0.LDAPError)
+#CATCH_ALL_EXC = DummyException
 
 
 class ConfigParameters:
