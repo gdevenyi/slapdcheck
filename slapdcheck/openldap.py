@@ -496,9 +496,9 @@ class SyncreplProviderTask(threading.Thread):
                 csn_delta = abs(self._local_csn_dict[db_suffix][sid]-remote_csn_timestamp)
                 csn_deltas[sid] = csn_delta
 
-            sum_csn_delta=sum(csn_deltas.values())
+            sum_csn_delta=sum([abs(val) for val in csn_deltas.values()])
             avg_csn_delta=sum_csn_delta / len(csn_deltas)
-            max_csn_delta=max(csn_deltas.values())
+            max_csn_delta=max([abs(val) for val in csn_deltas.values()])
 
             self.check_instance.result(
                 (
@@ -526,8 +526,8 @@ class SyncreplProviderTask(threading.Thread):
                 ),
                 num_csn_values=len(self.remote_csn_dict[db_suffix]),
                 connect_latency=ldap_conn.connect_latency,
-                avg_csn_delta=sum(csn_deltas.values())/len(csn_deltas),
-                max_csn_delta=max(csn_deltas.values()),
+                avg_csn_delta=avg_csn_delta,
+                max_csn_delta=max_csn_delta,
                 local_csn_missing=len(missing_local),
             )
 
