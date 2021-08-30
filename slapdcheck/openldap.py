@@ -504,7 +504,7 @@ class SyncreplProviderTask(threading.Thread):
                 (
                     CHECK_RESULT_OK
                     if (
-                        self._local_csn_dict[db_suffix]
+                        db_suffix in self._local_csn_dict
                         and not missing_local
                         and sum_csn_delta == 0
                     )
@@ -519,9 +519,9 @@ class SyncreplProviderTask(threading.Thread):
                         '{0}={1} ({2:0.1f})'.format(
                             int(sid, 16),
                             strf_secs(csn_time),
-                            csn_deltas[sid],
+                            csn_deltas.get(sid, 0.0),
                         )
-                        for sid, csn_time in sorted(self.remote_csn_dict[db_suffix].items())
+                        for sid, csn_time in sorted(self.remote_csn_dict.get(db_suffix, {}).items())
                     ]),
                 ),
                 num_csn_values=len(self.remote_csn_dict[db_suffix]),
