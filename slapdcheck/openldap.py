@@ -417,16 +417,23 @@ class SyncreplProviderTask(threading.Thread):
             ldap_conn = SlapdConnection(
                 self.syncrepl_target_uri,
                 trace_level=self._ldap0_trace_level,
-                tls_options={
-                    # Set TLS connection options from TLS attribute read from
-                    # configuration context
+                tls_options=dict(
                     # path name of file containing all trusted CA certificates
-                    'cacert_filename': syncrepl_obj.tls_cacert,
+                    cacert_filename=(
+                        syncrepl_obj.tls_cacert
+                        or self.check_instance._config_attrs['olcTLSCACertificateFile'][0]
+                    ),
                     # Use slapd server cert/key for client authentication
                     # just like used for syncrepl
-                    'client_cert_filename': syncrepl_obj.tls_cert,
-                    'client_key_filename': syncrepl_obj.tls_key,
-                },
+                    client_cert_filename=(
+                        syncrepl_obj.tls_cert
+                        or self.check_instance._config_attrs['olcTLSCertificateFile'][0]
+                    ),
+                    client_key_filename=(
+                        syncrepl_obj.tls_key
+                        or self.check_instance._config_attrs['olcTLSCertificateKeyFile'][0]
+                    ),
+                ),
                 network_timeout=syncrepl_obj.network_timeout,
                 timeout=syncrepl_obj.timeout,
                 bind_method=syncrepl_obj.bindmethod,
