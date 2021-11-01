@@ -201,16 +201,24 @@ class SlapdCheck(MonitoringCheck):
         Connect and bind to local slapd like a remote client
         mainly to check whether LDAPS with client cert works and maps expected authz-DN
         """
-        client_tls_options = {
-            # Set TLS connection options from TLS attribute read from
-            # configuration context
-            # path name of file containing all trusted CA certificates
-            'cacert_filename': self._config_attrs['olcTLSCACertificateFile'][0],
-            # Use slapd server cert/key for client authentication
-            # just like used for syncrepl
-            'client_cert_filename': self._config_attrs['olcTLSCertificateFile'][0],
-            'client_key_filename': self._config_attrs['olcTLSCertificateKeyFile'][0],
-        }
+        try:
+            client_tls_options = {
+                # Set TLS connection options from TLS attribute read from
+                # configuration context
+                # path name of file containing all trusted CA certificates
+                'cacert_filename': self._config_attrs['olcTLSCACertificateFile'][0],
+                # Use slapd server cert/key for client authentication
+                # just like used for syncrepl
+                'client_cert_filename': self._config_attrs['olcTLSCertificateFile'][0],
+                'client_key_filename': self._config_attrs['olcTLSCertificateKeyFile'][0],
+            }
+        except KeyError as exc:
+            self.result(
+                CHECK_RESULT_ERROR,
+                'SlapdSelfConn',
+                'TLS config attribute %s missing' % (exc,)
+            )
+            return
         try:
             ldaps_conn = SlapdConnection(
                 ldaps_uri,
