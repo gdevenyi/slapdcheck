@@ -15,8 +15,9 @@ Monitoring [OpenLDAP](https://www.openldap.org) *slapd*.
   * [PyPI](https://pypi.org/project/slapdcheck)
   * [openSUSE/SLE packages](https://build.opensuse.org/package/show/home:stroeder:iam/slapdcheck)
 
-## Relevant OpenLDAP documentation
+## Documentation
 
+  * Talk ["Monitoring OpenLDAP" at LDAPcon 2017](https://ldapcon.org/2017/monitoring-openldap/)
   * [slapd-config(5)](https://www.openldap.org/software/man.cgi?query=slapd-config)
   * [slapd-monitor(5)](https://www.openldap.org/software/man.cgi?query=slapd-monitor)
 
