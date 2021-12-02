@@ -17,7 +17,8 @@ Monitoring [OpenLDAP](https://www.openldap.org) *slapd*.
 
 ## Documentation
 
-  * Talk  at LDAPcon 2017: [Monitoring OpenLDAP](https://ldapcon.org/2017/monitoring-openldap/)
+  * [Talk at LDAPcon 2017](https://ldapcon.org/2017/monitoring-openldap/)
+  * [Talk at FOSDEM 2019](https://archive.fosdem.org/2019/schedule/event/slapdcheck/)
   * [slapd-config(5)](https://www.openldap.org/software/man.cgi?query=slapd-config)
   * [slapd-monitor(5)](https://www.openldap.org/software/man.cgi?query=slapd-monitor)
 
