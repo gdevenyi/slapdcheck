@@ -23,7 +23,7 @@ setup(
     author_email=__about__.__mail__,
     maintainer=__about__.__author__,
     maintainer_email=__about__.__mail__,
-    url='https://www.stroeder.com/slapdcheck.html',
+    url='https://code.stroeder.com/AE-DIR/slapdcheck',
     download_url='https://pypi.org/project/%s/#files' % (PYPI_NAME),
     keywords=['LDAP', 'OpenLDAP', 'slapd', 'monitoring'],
     packages=find_packages(exclude=['tests']),
