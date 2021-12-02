@@ -20,6 +20,12 @@ Monitoring [OpenLDAP](https://www.openldap.org) *slapd*.
   * [slapd-config(5)](https://www.openldap.org/software/man.cgi?query=slapd-config)
   * [slapd-monitor(5)](https://www.openldap.org/software/man.cgi?query=slapd-monitor)
 
+## Installation
+
+```
+python3 -m venv /opt/slapdcheck
+/opt/slapdcheck/bin/pip install slapdcheck
+```
 
 ## Usage
 
