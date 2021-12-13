@@ -11,7 +11,7 @@ Monitoring [OpenLDAP](https://www.openldap.org) *slapd*.
 
 ## Project resources
 
-  * [git repo python-ldap0](https://code.stroeder.com/AE-DIR/slapdcheck)
+  * [git repo python-ldap0](https://code.stroeder.com/ldap/slapdcheck)
   * [PyPI](https://pypi.org/project/slapdcheck)
   * [openSUSE/SLE packages](https://build.opensuse.org/package/show/home:stroeder:iam/slapdcheck)
 
@@ -37,7 +37,7 @@ Command for generating Nagios output:
 /opt/slapdcheck/bin/python -m slapdcheck.checkmk /etc/slapdcheck.cfg
 ```
 
-[example slapdcheck.cfg](https://code.stroeder.com/AE-DIR/slapdcheck/src/branch/master/config/slapdcheck-example.cfg)
+[example slapdcheck.cfg](https://code.stroeder.com/ldap/slapdcheck/src/branch/master/config/slapdcheck-example.cfg)
 
 ## Example Nagios output
 
