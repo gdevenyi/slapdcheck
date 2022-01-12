@@ -40,12 +40,14 @@ setup(
     ],
     extras_require = {
         'metrics':  ['prometheus_client>=0.7.1'],
+        'zabbix':  ['py-zabbix'],
     },
     zip_safe=False,
     entry_points={
         'console_scripts': [
             'slapd_checkmk = slapdcheck.checkmk:cli_run',
             'slapd_metrics = slapdcheck.metrics:cli_run',
+            'slapd_zabbix_send = slapdcheck.zabbix:cli_run',
         ],
     },
 )
