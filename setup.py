@@ -48,6 +48,7 @@ setup(
             'slapd_checkmk = slapdcheck.checkmk:cli_run',
             'slapd_metrics = slapdcheck.metrics:cli_run',
             'slapd_zabbix_send = slapdcheck.zabbix:cli_run',
+            'slapd_html = slapdcheck.html:cli_run',
         ],
     },
 )
