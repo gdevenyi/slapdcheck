@@ -66,8 +66,8 @@ class SlapdCheck(MonitoringCheck):
         'SlapdWaiters',
     )
 
-    def __init__(self, output_file, state_filename=None):
-        MonitoringCheck.__init__(self, output_file, state_filename)
+    def __init__(self, state_filename, formatters):
+        MonitoringCheck.__init__(self, state_filename, formatters)
         self._ldapi_conn = None
         self._config_attrs = {}
         self._monitor_cache = {}
@@ -1028,14 +1028,14 @@ class SlapdCheck(MonitoringCheck):
         # end of checks()
 
 
-def run(cls):
+def run(formatter_class):
     """
     entry point
     """
     CFG.read_config(sys.argv[1])
     logging.getLogger().setLevel(CFG.log_level)
-    slapd_check = cls(
-        output_file=sys.stdout,
-        state_filename=CFG.state_file,
+    slapd_check = SlapdCheck(
+        CFG.state_file,
+        [formatter_class(sys.stdout)],
     )
     slapd_check.run()

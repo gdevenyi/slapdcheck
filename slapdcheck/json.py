@@ -6,23 +6,17 @@ slapdcheck.json - generate JSON output
 import json
 
 # local package imports
-from . import SlapdCheck, run
+from . import run
+from .base import CheckFormatter
 
 
-class SlapdCheckJSON(SlapdCheck):
+class SlapdCheckJSON(CheckFormatter):
     """
     for generating JSON output
     """
 
-    def __init__(self, output_file, state_filename=None):
-        SlapdCheck.__init__(self, output_file, state_filename)
-
-    def output(self):
-        """
-        Outputs all results registered before with method result()
-        """
-        self._output_file.write(json.dumps(self._item_dict))
-        # end of output()
+    def output(self, check_items):
+        self._output_file.write(json.dumps(check_items))
 
 
 def cli_run():

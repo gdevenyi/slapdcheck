@@ -9,48 +9,47 @@ import socket
 from pyzabbix import ZabbixMetric, ZabbixSender
 
 # local package imports
-from . import SlapdCheck, run
+from . import run
+from .base import CheckFormatter
 
 
-class SlapdCheckZabbix(SlapdCheck):
+class SlapdCheckZabbix(CheckFormatter):
     """
-    slapd exporter for generating Open Metrics output
+    ZABBIX sender
     """
 
-    def __init__(self, output_file, state_filename=None):
+    def __init__(self, output_file):
         self._host = socket.getfqdn()
-        SlapdCheck.__init__(self, output_file, state_filename)
+        CheckFormatter.__init__(self, output_file)
 
-    def _zabbix_metrics(self):
-        """
-        generator returning ZabbixMetric instances
-        """
-        for i in sorted(self._item_dict.keys()):
-            if self._item_dict[i] is None:
+    def output(self, check_items):
+        zabbix_items = []
+        for i in sorted(check_items.keys()):
+            if check_items[i] is None:
                 continue
-            status, check_name, perf_data, _ = self._item_dict[i]
+            status, check_name, perf_data, _ = check_items[i]
             if perf_data:
                 for key, val in perf_data.items():
                     if key.endswith('_rate'):
                         continue
                     try:
-                        yield ZabbixMetric(
-                            self._host,
-                            '{}[{}]'.format(check_name, key),
-                            val,
+                        zabbix_items.append(
+                            ZabbixMetric(
+                                self._host,
+                                '{}[{}]'.format(check_name, key),
+                                val,
+                            )
                         )
                     except ValueError:
                         pass
-            yield ZabbixMetric(self._host, 'test[{}]'.format(check_name), status)
-        # end of _metrics()
-
-    def output(self):
-        """
-        Outputs all results registered before with method result()
-        """
-        zabbix_pkt = list(self._zabbix_metrics())
-        ZabbixSender(use_config=True).send(zabbix_pkt)
-        # end of output()
+            zabbix_items.append(
+                ZabbixMetric(
+                    self._host,
+                    'test[{}]'.format(check_name),
+                    status
+                )
+            )
+        ZabbixSender(use_config=True).send(zabbix_items)
 
 
 def cli_run():

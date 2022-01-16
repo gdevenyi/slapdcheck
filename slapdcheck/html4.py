@@ -6,7 +6,8 @@ slapdcheck.html4 - generate simple HTML 4 output
 import socket
 
 # local package imports
-from . import SlapdCheck, run
+from . import run
+from .base import CheckFormatter
 from .cfg import (
     CHECK_RESULT_ERROR,
     CHECK_RESULT_OK,
@@ -49,7 +50,7 @@ HTML_FOOTER = """
 """
 
 
-class SlapdCheckHTML(SlapdCheck):
+class SlapdCheckHTML(CheckFormatter):
     """
     slapd check for HTML output
     """
@@ -68,9 +69,9 @@ class SlapdCheckHTML(SlapdCheck):
         '</tr>\n'
     )
 
-    def __init__(self, output_file, state_filename=None):
+    def __init__(self, output_file):
         self._host = socket.getfqdn()
-        SlapdCheck.__init__(self, output_file, state_filename)
+        CheckFormatter.__init__(self, output_file)
 
     @staticmethod
     def _serialize_perf_data(pdat):
@@ -83,34 +84,22 @@ class SlapdCheckHTML(SlapdCheck):
         res.append('</table>')
         return '\n'.join(res)
 
-    def output(self):
-        """
-        Outputs all check_mk results registered before with method result()
-        """
+    def output(self, check_items):
         self._output_file.write(
             HTML_HEADER.format(
                 version=__version__,
                 host=self._host,
             )
         )
-        # add default unknown result for all known check items
-        # which up to now did not receive a particular result
-        for i in sorted(self._item_dict.keys()):
-            if not self._item_dict[i]:
-                self.result(
-                    CHECK_RESULT_UNKNOWN,
-                    i,
-                    'No defined check result yet!',
-                )
         # now output the result lines
-        for i in sorted(self._item_dict.keys()):
-            status, check_name, perf_data, check_msg = self._item_dict[i]
+        for i in sorted(check_items.keys()):
+            status, check_name, perf_data, check_msg = check_items[i]
             self._output_file.write(
                 self.output_format.format(
                     status_code=status,
                     status_text=self.checkmk_status[status],
                     status_color=HTML_STATUS_COLOR[status],
-                    name=self.subst_item_name_chars(check_name),
+                    name=check_name,
                     msg=check_msg,
                     perf_data=self._serialize_perf_data(perf_data),
                 )

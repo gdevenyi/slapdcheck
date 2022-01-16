@@ -8,21 +8,16 @@ from prometheus_client import Gauge, CollectorRegistry
 from prometheus_client.openmetrics.exposition import generate_latest
 
 # local package imports
-from . import SlapdCheck, run
+from . import run
+from .base import CheckFormatter
 
 
-class OpenMetricsCheck(SlapdCheck):
+class OpenMetricsCheck(CheckFormatter):
     """
     slapd exporter for generating Open Metrics output
     """
 
-    def __init__(self, output_file, state_filename=None):
-        SlapdCheck.__init__(self, output_file, state_filename)
-
-    def output(self):
-        """
-        Outputs all check_mk results registered before with method result()
-        """
+    def output(self, check_items):
         registry = CollectorRegistry()
         check_mk_performance = Gauge(
             'check_mk_performance_metrics', 'slapd performance metrics', ['name', 'metric_name'],
@@ -34,10 +29,10 @@ class OpenMetricsCheck(SlapdCheck):
             ['name'],
             registry=registry,
         )
-        for i in sorted(self._item_dict.keys()):
-            if self._item_dict[i] is None:
+        for i in sorted(check_items.keys()):
+            if check_items[i] is None:
                 continue
-            status, check_name, perf_data, _ = self._item_dict[i]
+            status, check_name, perf_data, _ = check_items[i]
             if perf_data:
                 for key, val in perf_data.items():
                     if key.endswith('_rate'):

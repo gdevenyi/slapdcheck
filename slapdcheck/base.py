@@ -11,6 +11,7 @@ import pprint
 import logging
 
 from .state import CheckStateFile
+from .cfg import CHECK_RESULT_UNKNOWN
 
 
 class MonitoringCheck(ABC):
@@ -18,21 +19,13 @@ class MonitoringCheck(ABC):
     base class for a monitoring check
     """
     item_names = (())
-    output_encoding = 'ascii'
     item_name_safe_chars = set(string.ascii_letters+string.digits+'_')
 
-    def __init__(self, output_file, state_filename=None):
-        """
-        output_file
-            fileobj where to write the output
-        output_encoding
-            encoding to use when writing output
-            'ascii' is always safe, Nagios mandates 'utf-8'
-        """
+    def __init__(self, state_filename, formatters):
+        self._formatters = formatters
         self._item_dict = {}
         for item_name in self.item_names:
             self.add_item(item_name)
-        self._output_file = output_file
         if state_filename is not None:
             # Initialize local state file and read old state if it exists
             self._state = CheckStateFile(state_filename)
@@ -61,18 +54,6 @@ class MonitoringCheck(ABC):
             )
         )
 
-    @abstractmethod
-    def output(self):
-        """
-        Outputs all results registered before with method result()
-        """
-        raise NotImplementedError(
-            "method .output() not implemented in class %s.%s" % (
-                self.__class__.__module__,
-                self.__class__.__name__,
-            )
-        )
-
     def run(self):
         """
         wrapper method for running all checks with outer expcetion handling
@@ -88,7 +69,17 @@ class MonitoringCheck(ABC):
                 ]
                 logging.exception('\n'.join(err_lines))
         finally:
-            self.output()
+            # add default unknown result for all known check items
+            # which up to now did not receive a particular result
+            for i in sorted(self._item_dict.keys()):
+                if not self._item_dict[i]:
+                    self.result(
+                        CHECK_RESULT_UNKNOWN,
+                        i,
+                        'No defined check result yet!',
+                    )
+            for formatter in self._formatters:
+                formatter.output(self._item_dict)
             if self._state:
                 self._state.write_state(self._next_state)
 
@@ -140,3 +131,25 @@ class MonitoringCheck(ABC):
             check_output or '',
         )
         # end of result()
+
+
+class CheckFormatter:
+    """
+    Base class for implementing different output
+    """
+    output_encoding = 'ascii'
+
+    def __init__(self, output_file):
+        self._output_file = output_file
+
+    @abstractmethod
+    def output(self):
+        """
+        Outputs all results registered before with method result()
+        """
+        raise NotImplementedError(
+            "method .output() not implemented in class %s.%s" % (
+                self.__class__.__module__,
+                self.__class__.__name__,
+            )
+        )

@@ -45,11 +45,11 @@ setup(
     zip_safe=False,
     entry_points={
         'console_scripts': [
-            'slapd_checkmk = slapdcheck.checkmk:cli_run',
-            'slapdcheck_html = slapdcheck.html4:cli_run',
-            'slapdcheck_json = slapdcheck.json:cli_run',
-            'slapd_metrics = slapdcheck.metrics:cli_run',
-            'slapd_zabbix_send = slapdcheck.zabbix:cli_run',
+            'slapdcheck-mrpe = slapdcheck.mrpe:cli_run',
+            'slapdcheck-html = slapdcheck.html4:cli_run',
+            'slapdcheck-json = slapdcheck.json:cli_run',
+            'slapdcheck-metrics = slapdcheck.metrics:cli_run',
+            'slapdcheck-zabbix = slapdcheck.zabbix:cli_run',
         ],
     },
 )
