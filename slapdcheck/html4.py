@@ -1,30 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-slapdcheck.html - generate simple HTML page
+slapdcheck.html4 - generate simple HTML 4 output
 """
 
 import socket
 
 # local package imports
 from . import SlapdCheck, run
-from .__about__ import __version__
 from .cfg import (
     CHECK_RESULT_ERROR,
     CHECK_RESULT_OK,
     CHECK_RESULT_UNKNOWN,
     CHECK_RESULT_WARNING,
 )
+from .__about__ import __version__
 
 
 HTML_STATUS_COLOR = {
-    CHECK_RESULT_ERROR: 'red',
-    CHECK_RESULT_OK: 'lightgreen',
-    CHECK_RESULT_UNKNOWN: 'orange',
-    CHECK_RESULT_WARNING: 'yellow',
+    CHECK_RESULT_ERROR: '#FF4500',
+    CHECK_RESULT_OK: '#9ACD32',
+    CHECK_RESULT_UNKNOWN: '#FFA500',
+    CHECK_RESULT_WARNING: '#FFD700',
 }
 
-HTML_HEADER = """<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+HTML_HEADER = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html xml:lang="en" lang="en">
 <head>
   <title>slapdcheck on {host}</title>
   <meta http-equiv="content-type" content="text/html;charset=utf-8" />
@@ -51,7 +51,7 @@ HTML_FOOTER = """
 
 class SlapdCheckHTML(SlapdCheck):
     """
-    slapd check for checkmk
+    slapd check for HTML output
     """
     checkmk_status = {
         CHECK_RESULT_OK: 'OK',
@@ -61,7 +61,7 @@ class SlapdCheckHTML(SlapdCheck):
     }
     output_format = (
         '<tr>'
-        '<td bgcolor="{status_color}">{status_text}</td>'
+        '<td align="middle" bgcolor="{status_color}">{status_text}</td>'
         '<td>{name}</td>'
         '<td>{msg}</td>'
         '<td>{perf_data}</td>'
@@ -69,9 +69,11 @@ class SlapdCheckHTML(SlapdCheck):
     )
 
     def __init__(self, output_file, state_filename=None):
+        self._host = socket.getfqdn()
         SlapdCheck.__init__(self, output_file, state_filename)
 
-    def _serialize_perf_data(self, pdat):
+    @staticmethod
+    def _serialize_perf_data(pdat):
         if not pdat:
             return '&nbsp;'
         res = ['<table>']
@@ -88,7 +90,7 @@ class SlapdCheckHTML(SlapdCheck):
         self._output_file.write(
             HTML_HEADER.format(
                 version=__version__,
-                host=socket.getfqdn(),
+                host=self._host,
             )
         )
         # add default unknown result for all known check items
@@ -106,11 +108,11 @@ class SlapdCheckHTML(SlapdCheck):
             self._output_file.write(
                 self.output_format.format(
                     status_code=status,
-                    status_color=HTML_STATUS_COLOR[status],
-                    perf_data=self._serialize_perf_data(perf_data),
-                    name=self.subst_item_name_chars(check_name),
                     status_text=self.checkmk_status[status],
+                    status_color=HTML_STATUS_COLOR[status],
+                    name=self.subst_item_name_chars(check_name),
                     msg=check_msg,
+                    perf_data=self._serialize_perf_data(perf_data),
                 )
             )
         self._output_file.write(HTML_FOOTER)

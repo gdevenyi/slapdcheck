@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-slapdcheck.checkmk - local check for check_mk
+slapdcheck.checkmk - generate NRPE output (e.g. for local check for check_mk)
 """
 
 #-----------------------------------------------------------------------
@@ -20,7 +20,7 @@ from .cfg import (
 # Classes
 #-----------------------------------------------------------------------
 
-class CheckMkSlapdCheck(SlapdCheck):
+class SlapdCheckNRPE(SlapdCheck):
     """
     slapd check for checkmk
     """
@@ -35,7 +35,8 @@ class CheckMkSlapdCheck(SlapdCheck):
     def __init__(self, output_file, state_filename=None):
         SlapdCheck.__init__(self, output_file, state_filename)
 
-    def _serialize_perf_data(self, pdat):
+    @staticmethod
+    def _serialize_perf_data(pdat):
         if not pdat:
             return '-'
         return '|'.join([
@@ -73,7 +74,7 @@ class CheckMkSlapdCheck(SlapdCheck):
 
 
 def cli_run():
-    run(CheckMkSlapdCheck)
+    run(SlapdCheckNRPE)
 
 
 if __name__ == '__main__':

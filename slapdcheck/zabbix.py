@@ -3,10 +3,6 @@
 slapdcheck.zabbix - generate output to be sent to ZABBIX trapper
 """
 
-#-----------------------------------------------------------------------
-# Import modules
-#-----------------------------------------------------------------------
-
 import socket
 
 # from module package py-zabbix
@@ -15,11 +11,8 @@ from pyzabbix import ZabbixMetric, ZabbixSender
 # local package imports
 from . import SlapdCheck, run
 
-#-----------------------------------------------------------------------
-# Classes
-#-----------------------------------------------------------------------
 
-class ZabbixCheck(SlapdCheck):
+class SlapdCheckZabbix(SlapdCheck):
     """
     slapd exporter for generating Open Metrics output
     """
@@ -61,7 +54,7 @@ class ZabbixCheck(SlapdCheck):
 
 
 def cli_run():
-    run(ZabbixCheck)
+    run(SlapdCheckZabbix)
 
 
 if __name__ == '__main__':

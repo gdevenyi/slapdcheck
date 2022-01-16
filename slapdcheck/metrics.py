@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-slapdcheck.checkmk - local check for check_mk
+slapdcheck.metrics - Open Metrics output
 """
-
-#-----------------------------------------------------------------------
-# Import modules
-#-----------------------------------------------------------------------
 
 # from module package prometheus_client
 from prometheus_client import Gauge, CollectorRegistry
@@ -14,9 +10,6 @@ from prometheus_client.openmetrics.exposition import generate_latest
 # local package imports
 from . import SlapdCheck, run
 
-#-----------------------------------------------------------------------
-# Classes
-#-----------------------------------------------------------------------
 
 class OpenMetricsCheck(SlapdCheck):
     """
