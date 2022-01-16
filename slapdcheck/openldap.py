@@ -365,12 +365,7 @@ class SyncreplProviderTask(threading.Thread):
         self.syncrepl_target_uri = syncrepl_target_uri
         syncrepl_target_lu_obj = LDAPUrl(self.syncrepl_target_uri)
         self.syncrepl_target_hostport = syncrepl_target_lu_obj.hostport.lower()
-        self.setName(
-            '-'.join((
-                self.__class__.__name__,
-                self.syncrepl_target_hostport,
-            ))
-        )
+        self.name = '-'.join((self.__class__.__name__, self.syncrepl_target_hostport))
         self._local_csn_dict = local_csn_dict
         self.remote_csn_dict = {}
         self.connect_latency = None
