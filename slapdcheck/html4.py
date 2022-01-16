@@ -3,8 +3,8 @@
 slapdcheck.html4 - generate simple HTML 4 output
 """
 
-import html
 import socket
+from html import escape
 
 # local package imports
 from . import run
@@ -81,7 +81,10 @@ class SlapdCheckHTML(CheckFormatter):
         res = ['<table>']
         for pkey, pval in pdat.items():
             if not pkey.endswith('_total'):
-                res.append('<tr><td>{k}</td><td>{v}</td></tr>'.format(k=pkey, v=pval))
+                res.append('<tr><td>{k}</td><td>{v}</td></tr>'.format(
+                    k=escape(pkey),
+                    v=escape(str(pval)),
+                ))
         res.append('</table>')
         return '\n'.join(res)
 
@@ -100,8 +103,8 @@ class SlapdCheckHTML(CheckFormatter):
                     status_code=status,
                     status_text=self.checkmk_status[status],
                     status_color=HTML_STATUS_COLOR[status],
-                    name=html.escape(check_name),
-                    msg=html.escape(check_msg),
+                    name=escape(check_name),
+                    msg=escape(check_msg),
                     perf_data=self._serialize_perf_data(perf_data),
                 )
             )
