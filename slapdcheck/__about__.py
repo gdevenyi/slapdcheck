@@ -7,8 +7,8 @@ import collections
 VersionInfo = collections.namedtuple('VersionInfo', ('major', 'minor', 'micro'))
 __version_info__ = VersionInfo(
     major=3,
-    minor=9,
-    micro=6,
+    minor=10,
+    micro=0,
 )
 __version__ = '.'.join(str(val) for val in __version_info__)
 __author__ = 'Michael Stroeder'
