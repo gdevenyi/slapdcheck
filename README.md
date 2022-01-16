@@ -31,15 +31,15 @@ python3 -m venv /opt/slapdcheck
 
 ## Usage
 
-Command for generating Nagios output:
+Command for generating MRPE output for check_mk:
 
 ```
-/opt/slapdcheck/bin/python -m slapdcheck.checkmk /etc/slapdcheck.cfg
+/opt/slapdcheck/bin/python -m slapdcheck.mrpe /etc/slapdcheck.cfg
 ```
 
 [example slapdcheck.cfg](https://code.stroeder.com/ldap/slapdcheck/src/branch/master/config/slapdcheck-example.cfg)
 
-## Example Nagios output
+## Example MRPE output
 
 ```
 0 SlapdCert not_after=1624052194.0|not_before=1592516194.0 OK - Server cert '/opt/ae-dir/etc/tls/ae-dir-suse-p1.example.com.crt' valid until 2021-06-18 21:36:34+00:00 UTC (92 days left, 74.8 % elapsed), modulus_match==True
