@@ -442,7 +442,7 @@ class SlapdCheck(MonitoringCheck):
         # optionally extend the list of files to be checked with slapd exec
         # file read from the argument file if present
         if 'olcArgsFile' in self._config_attrs:
-            with open(self._config_attrs['olcArgsFile'][0]) as args_file:
+            with open(self._config_attrs['olcArgsFile'][0], encoding='ascii') as args_file:
                 check_filenames.append(shlex.split(args_file.read())[0])
         for check_filename in check_filenames:
             try:
