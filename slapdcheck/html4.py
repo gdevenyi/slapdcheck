@@ -3,6 +3,7 @@
 slapdcheck.html4 - generate simple HTML 4 output
 """
 
+import html
 import socket
 
 # local package imports
@@ -99,8 +100,8 @@ class SlapdCheckHTML(CheckFormatter):
                     status_code=status,
                     status_text=self.checkmk_status[status],
                     status_color=HTML_STATUS_COLOR[status],
-                    name=check_name,
-                    msg=check_msg,
+                    name=html.escape(check_name),
+                    msg=html.escape(check_msg),
                     perf_data=self._serialize_perf_data(perf_data),
                 )
             )
