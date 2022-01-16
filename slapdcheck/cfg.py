@@ -60,6 +60,7 @@ class ConfigParameters:
         'server_id_min',
         'server_id_max',
         'slapd_sock_timeout',
+        'state_file',
         'syncrepl_hysteresis_crit',
         'syncrepl_hysteresis_warn',
         'syncrepl_provider_error_percentage',
@@ -97,6 +98,9 @@ class ConfigParameters:
 
         # log level
         self.log_level = logging.WARN
+
+        # path of state file
+        self.state_file = 'slapdcheck.state'
 
         # LDAP URI for local connection over IPC (Unix domain socket)
         self.ldapi_uri = 'ldapi://'

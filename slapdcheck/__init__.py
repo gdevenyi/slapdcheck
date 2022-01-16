@@ -1036,6 +1036,6 @@ def run(cls):
     logging.getLogger().setLevel(CFG.log_level)
     slapd_check = cls(
         output_file=sys.stdout,
-        state_filename=os.path.basename(sys.argv[0][:-3]),
+        state_filename=CFG.state_file,
     )
     slapd_check.run()
