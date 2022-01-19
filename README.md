@@ -2,12 +2,24 @@
 
 Monitoring [OpenLDAP](https://www.openldap.org) *slapd*.
 
+## Supported monitoring systems
+
+  * [MRPE for checkmk](https://checkmk.com/integrations/mrpe)
+  * [OpenMetrics](https://openmetrics.io/) e.g. for Prometheus
+  * Send data to Zabbix trapper similar to _zabbix_sender_
+  * Simple colored HTML output
+  * JSON output
+
 ## Requirements
 
   * Python 3.6+
   * Module [ldap0](https://pypi.org/project/ldap0/)
+  * Module [psutil](https://pypi.org/project/psutil/)
   * Config backend (aka cn=config) has to be configured and readable.
   * Monitoring backend (aka cn=monitor) has to be configured and readable.
+  * Optionally used Python modules:
+    - [prometheus_client](https://pypi.org/project/prometheus_client/)
+    - [py-zabbix](https://pypi.org/project/py-zabbix/)
 
 ## Project resources
 
@@ -15,7 +27,7 @@ Monitoring [OpenLDAP](https://www.openldap.org) *slapd*.
   * [PyPI](https://pypi.org/project/slapdcheck)
   * [openSUSE/SLE packages](https://build.opensuse.org/package/show/home:stroeder:iam/slapdcheck)
 
-## Documentation
+## See also
 
   * [Talk at LDAPcon 2017](https://ldapcon.org/2017/monitoring-openldap/)
   * [Talk at FOSDEM 2019](https://archive.fosdem.org/2019/schedule/event/slapdcheck/)
@@ -24,12 +36,20 @@ Monitoring [OpenLDAP](https://www.openldap.org) *slapd*.
 
 ## Installation
 
+Create a virtual environment:
+
 ```
 python3 -m venv /opt/slapdcheck
-/opt/slapdcheck/bin/pip install slapdcheck
 ```
 
-## Usage
+Pip-based installation from [PyPI](https://pypi.org/project/slapdcheck/)
+with all optional dependencies:
+
+```
+/opt/slapdcheck/bin/pip install slapdcheck[all]
+```
+
+## Simple Usage
 
 Command for generating MRPE output for check_mk:
 
