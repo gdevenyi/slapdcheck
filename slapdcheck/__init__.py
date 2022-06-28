@@ -1020,7 +1020,12 @@ class SlapdCheck(MonitoringCheck):
         self.result(
             CHECK_RESULT_OK,
             'SlapdCheckTime',
-            '%s %s took %0.2f secs to run' % (__name__, __version__, check_duration,),
+            '%s %s took %0.2f secs to run, finished %s' % (
+                __name__,
+                __version__,
+                check_duration,
+                datetime.fromtimestamp(check_finished).strftime('%Y-%m-%d %H:%M:%S'),
+            ),
             check_started=check_started,
             check_finished=check_finished,
             check_duration=check_duration,
