@@ -930,8 +930,11 @@ class SlapdCheck(MonitoringCheck):
                 ),
             )
         else:
-            if 'olcServerID' in self._config_attrs:
-                server_id = int(self._config_attrs['olcServerID'][0])
+            if (
+                    'olcServerID' in self._config_attrs
+                    and len(self._config_attrs['olcServerID']) == 1
+                ):
+                server_id = int(self._config_attrs['olcServerID'][0].split(' ', 1)[0])
                 server_id_msg = ' server ID: {0:d} (0x{0:x})'.format(server_id)
                 res_code = CHECK_RESULT_OK
                 if not CFG.server_id_min <= server_id <= CFG.server_id_max:
@@ -942,7 +945,9 @@ class SlapdCheck(MonitoringCheck):
                     )
             else:
                 server_id = None
-                server_id_msg = ''
+                server_id_msg = ', cannot determine local server ID from {0!r}'.format(
+                    self._config_attrs.get('olcServerID', [])
+                )
                 res_code = CHECK_RESULT_OK
             self.result(
                 res_code,
